@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Map Click to Save Lat/Lng</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS for map styling -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <!-- Tailwind CSS for modern, responsive utility styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts - Inter for a clean look -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Ensure the body and html take full height for proper layout */
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden; /* Prevent horizontal scrolling */
+    }
+    /* Main container should allow scrolling if content overflows */
+    body {
+      overflow-y: auto;
+    }
+    /* Map container takes up available height */
+    #map {
+      flex-grow: 1; /* Allows map to fill available vertical space */
+      width: 100%;
+      min-height: 400px; /* Minimum height for map, slightly increased */
+    }
+    /* Styles for the confirmation modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black overlay */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000; /* Ensure it's on top of other content */
+    }
+    .modal-content {
+      background-color: #fff;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+  <div class="flex flex-col items-center justify-center w-full max-w-4xl bg-white shadow-lg rounded-xl p-6 space-y-4 mb-8">
+    <h3 class="text-2xl font-semibold text-gray-800 mb-4">คลิกบนแผนที่เพื่อระบุละติจูดและลองจิจูด</h3>
+    <!-- Map container -->
+    <div id="map" class="rounded-lg border border-gray-300 overflow-hidden"></div>
+    
+    <!-- Search Input for Location Name -->
+    <div class="w-full flex flex-col sm:flex-row items-center sm:space-x-4 mt-4">
+      <label for="locationSearchInput" class="text-gray-700 text-lg font-medium sm:w-1/4">ค้นหาสถานที่:</label>
+      <input type="text" id="locationSearchInput" placeholder="เช่น กรุงเทพมหานคร, สุวรรณภูมิ" 
+             class="mt-1 sm:mt-0 flex-grow p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800">
+      <button id="searchLocationButton" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 mt-2 sm:mt-0">
+        ค้นหาสถานที่
+      </button>
+    </div>
+
+    <!-- Latitude and Longitude display for current click -->
+    <div class="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-8 mt-4 text-lg font-medium text-gray-700 w-full flex-wrap">
+      <p>ละติจูดที่เลือก: <span id="lat" class="font-bold text-blue-600">--</span></p>
+      <p>ลองจิจูดที่เลือก: <span id="lng" class="font-bold text-blue-600">--</span></p>
+      <!-- Moved Current Location Button here -->
+      <button id="currentLocationButton" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+        ไปยังตำแหน่งปัจจุบัน
+      </button>
+    </div>
+
+    <!-- Input field for employee ID -->
+    <div class="w-full flex flex-col sm:flex-row items-center sm:space-x-4 mt-2">
+      <label for="employeeIdInput" class="text-gray-700 text-lg font-medium sm:w-1/4">ID พนักงาน:</label>
+      <input type="text" id="employeeIdInput" placeholder="เช่น 824001, 824002, 824003" 
+             class="mt-1 sm:mt-0 flex-grow p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800">
+    </div>
+
+    <!-- Buttons for saving, clearing, and exporting locations -->
+    <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-4 w-full justify-center flex-wrap">
+      <button id="saveButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+        บันทึกตำแหน่งปัจจุบัน
+      </button>
+      <button id="clearAllButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+        ล้างตำแหน่งที่บันทึกทั้งหมด
+      </button>
+      <button id="exportCsvButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+        Export เป็น CSV
+      </button>
+    </div>
+
+    <!-- Message box for user feedback -->
+    <div id="messageBox" class="mt-4 p-3 bg-blue-100 text-blue-800 rounded-lg hidden text-center w-full">
+      <p id="messageText"></p>
+    </div>
+
+    <!-- Saved Locations Table -->
+    <div class="w-full mt-8">
+      <h4 class="text-xl font-semibold text-gray-800 mb-4 text-center">ตำแหน่งที่บันทึกไว้</h4>
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
+          <thead>
+            <tr class="bg-gray-100 border-b border-gray-200">
+              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700 rounded-tl-lg">ID</th>
+              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">ID พนักงาน</th>
+              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">ละติจูด</th>
+              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">ลองจิจูด</th>
+              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">เวลาที่บันทึก</th>
+              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">ลิงก์ Google Maps</th>
+              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700 rounded-tr-lg">การดำเนินการ</th>
+            </tr>
+          </thead>
+          <tbody id="savedLocationsTableBody">
+            <!-- Rows will be dynamically inserted here -->
+            <tr class="text-center">
+              <td colspan="7" class="py-4 px-4 text-gray-500">ยังไม่มีตำแหน่งที่บันทึกไว้</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Confirmation Modal -->
+  <div id="confirmationModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h4 class="text-xl font-bold text-gray-800 mb-4">ยืนยันการลบข้อมูล</h4>
+      <p class="text-gray-700 mb-6">คุณแน่ใจหรือไม่ว่าต้องการลบตำแหน่งที่บันทึกไว้ทั้งหมด? การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+      <div class="flex justify-center space-x-4">
+        <button id="confirmClearButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+          ยืนยันการล้าง
+        </button>
+        <button id="cancelClearButton" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+          ยกเลิก
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet JavaScript for map functionality -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    var map; // Global variable for the map instance
+    var currentMarker; // Marker for the currently clicked/searched location (temporary)
+    var permanentMarkers = L.layerGroup(); // Layer group to hold all saved location markers
+    var currentLat = null; // Variable to store the current latitude
+    var currentLng = null; // Variable to store the current longitude
+    var savedLocations = []; // Array to store all saved location objects
+    var nextId = 1; // Counter for unique IDs
+
+    const messageBox = document.getElementById('messageBox');
+    const messageText = document.getElementById('messageText');
+    const savedLocationsTableBody = document.getElementById('savedLocationsTableBody');
+    const employeeIdInput = document.getElementById('employeeIdInput'); // Renamed from locationNameInput
+    const locationSearchInput = document.getElementById('locationSearchInput'); // New search input field
+
+    // Confirmation Modal elements
+    const confirmationModal = document.getElementById('confirmationModal');
+    const confirmClearButton = document.getElementById('confirmClearButton');
+    const cancelClearButton = document.getElementById('cancelClearButton');
+
+
+    // Function to show a message to the user
+    function showMessage(message, type = 'info') {
+      messageText.textContent = message;
+      messageBox.classList.remove('hidden');
+      // Clear previous styling
+      messageBox.classList.remove('bg-blue-100', 'text-blue-800', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-yellow-100', 'text-yellow-800');
+      
+      // Apply styling based on message type
+      if (type === 'success') {
+        messageBox.classList.add('bg-green-100', 'text-green-800');
+      } else if (type === 'error') {
+        messageBox.classList.add('bg-red-100', 'text-red-800');
+      } else if (type === 'warning') {
+        messageBox.classList.add('bg-yellow-100', 'text-yellow-800');
+      } else { // default to info
+        messageBox.classList.add('bg-blue-100', 'text-blue-800');
+      }
+
+      // Hide the message after 3 seconds
+      setTimeout(() => {
+        messageBox.classList.add('hidden');
+      }, 3000);
+    }
+
+    // Function to show the confirmation modal
+    function showClearConfirmation() {
+        confirmationModal.classList.remove('hidden');
+    }
+
+    // Function to hide the confirmation modal
+    function hideClearConfirmation() {
+        confirmationModal.classList.add('hidden');
+    }
+
+    // Function to perform the actual clearing of all locations
+    function performClearAllLocations() {
+      localStorage.removeItem('allSavedLocations');
+      localStorage.removeItem('nextId'); // Also clear the ID counter
+      savedLocations = [];
+      nextId = 1; // Reset ID counter
+      
+      // Reset the display and temporary marker
+      document.getElementById('lat').textContent = '--';
+      document.getElementById('lng').textContent = '--';
+      currentLat = null;
+      currentLng = null;
+      if (currentMarker) {
+        map.removeLayer(currentMarker);
+        currentMarker = null;
+      }
+      employeeIdInput.value = ''; // Clear employee ID input
+      locationSearchInput.value = ''; // Clear search input
+      map.setView([13.7563, 100.5018], 6); // Reset map view to initial location
+      showMessage('ตำแหน่งที่บันทึกไว้ทั้งหมดถูกลบแล้ว!', 'success'); // All saved locations cleared!
+      renderPermanentMarkers(); // This will clear all permanent markers
+      renderTable(); // This will clear the table
+      hideClearConfirmation(); // Hide the modal after clearing
+    }
+
+
+    // Function to render all permanent markers on the map
+    function renderPermanentMarkers() {
+      permanentMarkers.clearLayers(); // Clear existing markers
+      savedLocations.forEach((loc, index) => {
+        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`;
+        const marker = L.marker([loc.lat, loc.lng])
+          .addTo(permanentMarkers)
+          .bindPopup(`
+            <b>ID:</b> ${loc.id}<br>
+            <b>ID พนักงาน:</b> ${loc.name}<br>
+            <b>ละติจูด:</b> ${loc.lat}<br>
+            <b>ลองจิจูด:</b> ${loc.lng}<br>
+            <b>บันทึกเมื่อ:</b> ${loc.timestamp}<br>
+            <div style="margin-top: 10px;">
+                <a href="${googleMapsUrl}" target="_blank" style="background-color: #4285f4; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; display: inline-block;">
+                    ดูบน Google Maps
+                </a>
+                <button class="delete-btn" data-index="${index}" style="background-color: #ef4444; color: white; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; margin-left: 5px;">
+                    ลบ
+                </button>
+            </div>
+          `);
+          // Attach click listener for the delete button inside popup
+          marker.on('popupopen', function() {
+              const deleteButton = document.querySelector(`.delete-btn[data-index="${index}"]`);
+              if (deleteButton) {
+                  deleteButton.onclick = (e) => {
+                      e.stopPropagation(); // Prevent map click event
+                      deleteLocation(parseInt(deleteButton.dataset.index));
+                      map.closePopup(); // Close the popup after deleting
+                  };
+              }
+          });
+      });
+      permanentMarkers.addTo(map); // Add the layer group to the map
+    }
+
+    // Function to render saved locations in the table
+    function renderTable() {
+      savedLocationsTableBody.innerHTML = ''; // Clear existing table rows
+
+      if (savedLocations.length === 0) {
+        const noDataRow = document.createElement('tr');
+        // Adjusted colspan to 7 (6 existing columns + 1 new Google Maps link column)
+        noDataRow.innerHTML = '<td colspan="7" class="py-4 px-4 text-gray-500 text-center">ยังไม่มีตำแหน่งที่บันทึกไว้</td>';
+        savedLocationsTableBody.appendChild(noDataRow);
+        return;
+      }
+
+      savedLocations.forEach((loc, index) => {
+        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`;
+        const row = document.createElement('tr');
+        row.classList.add('border-b', 'border-gray-200', 'last:border-b-0');
+        row.innerHTML = `
+          <td class="py-3 px-4 text-sm text-gray-800">${loc.id}</td>
+          <td class="py-3 px-4 text-sm text-gray-800">${loc.name || '-'}</td>
+          <td class="py-3 px-4 text-sm text-gray-800">${loc.lat.toFixed(6)}</td>
+          <td class="py-3 px-4 text-sm text-gray-800">${loc.lng.toFixed(6)}</td>
+          <td class="py-3 px-4 text-sm text-gray-800">${loc.timestamp}</td>
+          <td class="py-3 px-4 text-sm text-gray-800">
+            <a href="${googleMapsUrl}" target="_blank" class="text-blue-600 hover:underline">ดูบน Google Maps</a>
+          </td>
+          <td class="py-3 px-4 text-sm text-gray-800">
+            <button class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md shadow-sm transition duration-300 ease-in-out transform hover:scale-105" onclick="deleteLocation(${index})">
+              ลบ
+            </button>
+          </td>
+        `;
+        savedLocationsTableBody.appendChild(row);
+      });
+    }
+
+    // Function to save the current latitude and longitude to localStorage
+    function saveLocation() {
+      if (currentLat === null || currentLng === null) {
+        showMessage('กรุณาคลิกบนแผนที่หรือค้นหาสถานที่ก่อนบันทึก!', 'warning'); // Please click on the map or search for a location before saving!
+        return;
+      }
+
+      let employeeId = employeeIdInput.value.trim();
+      if (employeeId === '') {
+        employeeId = `ID พนักงานที่ ${nextId}`; // Default name if empty
+      }
+
+      const newLocation = {
+        id: nextId,
+        name: employeeId, // Store employee ID in the 'name' field
+        lat: currentLat,
+        lng: currentLng,
+        timestamp: new Date().toLocaleString('th-TH') // Format date for Thai locale
+      };
+      savedLocations.push(newLocation);
+      nextId++; // Increment ID for the next item
+      
+      localStorage.setItem('allSavedLocations', JSON.stringify(savedLocations));
+      localStorage.setItem('nextId', nextId.toString()); // Save the nextId counter
+      
+      showMessage('ตำแหน่งถูกบันทึกแล้ว!', 'success'); // Location saved!
+      employeeIdInput.value = ''; // Clear the input field after saving
+      renderPermanentMarkers();
+      renderTable();
+    }
+
+    // Function to load all saved locations from localStorage
+    function loadLocations() {
+      const storedLocations = localStorage.getItem('allSavedLocations');
+      const storedNextId = localStorage.getItem('nextId');
+
+      if (storedLocations) {
+        savedLocations = JSON.parse(storedLocations);
+        // Ensure IDs are unique and sequential if not already
+        let maxId = 0;
+        savedLocations.forEach(loc => {
+          if (loc.id && typeof loc.id === 'number' && loc.id > maxId) {
+            maxId = loc.id;
+          }
+          // Handle cases where 'name' might be missing from older saves or needs adjustment
+          if (!loc.name || loc.name.startsWith('ตำแหน่งที่ ')) { // Check for old default name
+            loc.name = `ID พนักงานที่ ${loc.id || savedLocations.indexOf(loc) + 1}`;
+          }
+        });
+        nextId = maxId + 1;
+        showMessage('โหลดตำแหน่งที่บันทึกไว้แล้ว!', 'info'); // Loaded saved locations!
+      } else {
+        savedLocations = []; // Initialize as empty if nothing found
+        showMessage('ไม่พบตำแหน่งที่บันทึกไว้', 'info'); // No saved locations found
+      }
+      
+      if (storedNextId) {
+        nextId = parseInt(storedNextId);
+      } else if (savedLocations.length > 0) {
+        // If nextId wasn't stored, calculate it from existing data
+        const maxId = savedLocations.reduce((max, loc) => Math.max(max, loc.id || 0), 0);
+        nextId = maxId + 1;
+      } else {
+        nextId = 1; // Start from 1 if no locations
+      }
+
+
+      renderPermanentMarkers();
+      renderTable();
+    }
+
+    // Function to delete a specific location by its index
+    function deleteLocation(index) {
+      if (index >= 0 && index < savedLocations.length) {
+        const deletedLoc = savedLocations.splice(index, 1); // Remove the item
+        localStorage.setItem('allSavedLocations', JSON.stringify(savedLocations)); // Update localStorage
+        // No need to adjust nextId when deleting, as IDs are unique and not reused
+        showMessage(`ลบตำแหน่ง (ID: ${deletedLoc[0].id}, ID พนักงาน: ${deletedLoc[0].name}) แล้ว!`, 'success'); // Location deleted!
+        renderPermanentMarkers(); // Re-render markers
+        renderTable(); // Re-render table
+      }
+    }
+
+    // Function to export saved locations to CSV
+    function exportToCSV() {
+      if (savedLocations.length === 0) {
+        showMessage('ไม่มีข้อมูลที่จะ Export!', 'warning'); // No data to export!
+        return;
+      }
+
+      let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Add BOM for proper Thai character display
+      csvContent += "ID,ID พนักงาน,ละติจูด,ลองจิจูด,เวลาที่บันทึก,ลิงก์ Google Maps\n"; // CSV header updated
+
+      savedLocations.forEach(function(loc) {
+        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`;
+        // Enclose ID พนักงาน and timestamp in quotes and escape internal quotes
+        let row = `${loc.id},"${loc.name.replace(/"/g, '""')}","${loc.lat.toFixed(6)}","${loc.lng.toFixed(6)}","${loc.timestamp.replace(/"/g, '""')}", "${googleMapsUrl}"`;
+        csvContent += row + "\n";
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "saved_employee_locations.csv"); // Change downloaded file name
+      document.body.appendChild(link); // Required for Firefox
+
+      link.click(); // This will download the data file named "saved_employee_locations.csv".
+      document.body.removeChild(link); // Clean up the DOM
+
+      showMessage('Export ข้อมูลเป็น CSV เรียบร้อยแล้ว!', 'success'); // Data exported to CSV successfully!
+    }
+
+    // Function to get current location
+    function getCurrentLocation() {
+      if (navigator.geolocation) {
+        showMessage('กำลังค้นหาตำแหน่งปัจจุบัน...', 'info');
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude.toFixed(6);
+            const lng = position.coords.longitude.toFixed(6);
+
+            currentLat = parseFloat(lat);
+            currentLng = parseFloat(lng);
+
+            document.getElementById('lat').textContent = lat;
+            document.getElementById('lng').textContent = lng;
+
+            // Remove existing temporary marker if any
+            if (currentMarker) {
+              map.removeLayer(currentMarker);
+            }
+            // Add a new temporary marker at the current location
+            currentMarker = L.marker([currentLat, currentLng]).addTo(map);
+            map.setView([currentLat, currentLng], 15); // Center map on current location with zoom level 15
+            showMessage('พบตำแหน่งปัจจุบันแล้ว!', 'success');
+          },
+          (error) => {
+            let errorMessage = '';
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage = 'ไม่อนุญาตให้เข้าถึงตำแหน่ง'; // User denied the request for Geolocation.
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMessage = 'ไม่สามารถระบุตำแหน่งได้'; // Location information is unavailable.
+                break;
+              case error.TIMEOUT:
+                errorMessage = 'หมดเวลาในการค้นหาตำแหน่ง'; // The request to get user location timed out.
+                break;
+              default:
+                errorMessage = `เกิดข้อผิดพลาด: ${error.message}`; // An unknown error occurred.
+                break;
+            }
+            showMessage(`ไม่สามารถระบุตำแหน่งปัจจุบันได้: ${errorMessage}`, 'error');
+          },
+          {
+            enableHighAccuracy: true, // Request highly accurate position
+            timeout: 5000, // Maximum time (ms) to wait for a position
+            maximumAge: 0 // Accept a cached position whose age is no more than this value (ms)
+          }
+        );
+      } else {
+        showMessage('เบราว์เซอร์ของคุณไม่รองรับ Geolocation.', 'error'); // Geolocation is not supported by this browser.
+      }
+    }
+
+    // Function to search for a location name using Nominatim API
+    async function searchLocation() {
+      const query = locationSearchInput.value.trim();
+      if (!query) {
+        showMessage('กรุณาพิมพ์ชื่อสถานที่ที่ต้องการค้นหา', 'warning'); // Please type a location name to search
+        return;
+      }
+
+      showMessage('กำลังค้นหาสถานที่...', 'info');
+      try {
+        // Using Nominatim API for geocoding
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+        const data = await response.json();
+
+        if (data && data.length > 0) {
+          const result = data[0];
+          const lat = parseFloat(result.lat).toFixed(6);
+          const lng = parseFloat(result.lon).toFixed(6);
+
+          currentLat = parseFloat(lat);
+          currentLng = parseFloat(lng);
+
+          document.getElementById('lat').textContent = lat;
+          document.getElementById('lng').textContent = lng;
+
+          // Remove existing temporary marker if any
+          if (currentMarker) {
+            map.removeLayer(currentMarker);
+          }
+          // Add a new temporary marker at the found location
+          currentMarker = L.marker([currentLat, currentLng]).addTo(map);
+          map.setView([currentLat, currentLng], 13); // Center map on found location with zoom level 13
+          showMessage(`พบสถานที่: ${result.display_name}`, 'success'); // Found location: [display name]
+        } else {
+          // Improved message for no search results
+          showMessage('ไม่พบสถานที่ที่ค้นหา โปรดลองใช้คำที่แตกต่างกันหรือคำที่กว้างขึ้น', 'error'); // Location not found. Please try different or broader terms.
+        }
+      } catch (error) {
+        console.error('Error searching location:', error);
+        showMessage('เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง', 'error'); // An error occurred during search. Please try again.
+      }
+    }
+
+
+    // Initialize the map and load data on window load
+    window.onload = function() {
+      // Initialize the map with a default view (Bangkok, Thailand)
+      // The zoom level is set to 6 to show a wider area.
+      map = L.map('map').setView([13.7563, 100.5018], 6);
+
+      // Add OpenStreetMap tile layer to the map
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors', // Attribution for OpenStreetMap
+        maxZoom: 19 // Maximum zoom level
+      }).addTo(map);
+
+      permanentMarkers.addTo(map); // Add the permanent markers layer group to the map
+
+      // Add a click event listener to the map
+      map.on('click', function(e) {
+        // Get latitude and longitude from the click event
+        const lat = e.latlng.lat.toFixed(6); // Format to 6 decimal places
+        const lng = e.latlng.lng.toFixed(6); // Format to 6 decimal places
+
+        // Update the current global variables
+        currentLat = parseFloat(lat);
+        currentLng = parseFloat(lng);
+
+        document.getElementById('lat').textContent = lat;
+        document.getElementById('lng').textContent = lng;
+
+        // Check if a temporary marker already exists
+        if (currentMarker) {
+          // If marker exists, update its position to the new click location
+          map.removeLayer(currentMarker); // Remove old current marker
+        }
+        // Create a new temporary marker at the current location
+        currentMarker = L.marker(e.latlng).addTo(map);
+      });
+
+      // Attach event listeners to the buttons
+      document.getElementById('saveButton').addEventListener('click', saveLocation);
+      // Changed this to call showClearConfirmation instead of performClearAllLocations directly
+      document.getElementById('clearAllButton').addEventListener('click', showClearConfirmation);
+      document.getElementById('exportCsvButton').addEventListener('click', exportToCSV);
+      document.getElementById('currentLocationButton').addEventListener('click', getCurrentLocation);
+      document.getElementById('searchLocationButton').addEventListener('click', searchLocation); // New event listener for location search
+
+      // Attach event listeners for the confirmation modal buttons
+      confirmClearButton.addEventListener('click', performClearAllLocations);
+      cancelClearButton.addEventListener('click', hideClearConfirmation);
+
+
+      // Load saved locations on page load
+      loadLocations();
+
+      // Invalidate map size once the page is fully loaded to prevent display issues
+      map.invalidateSize();
+    };
+
+    // Adjust map size on window resize to ensure responsiveness
+    window.addEventListener('resize', function() {
+      if (map) { // Ensure map is initialized before invalidating size
+        map.invalidateSize(); // Forces Leaflet to recalculate map size
+      }
+    });
+  </script>
+</body>
+</html>

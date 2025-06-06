@@ -129,7 +129,7 @@
       <i class="fas fa-arrow-left"></i>
     </button>
 
-    <h3 class="text-2xl font-semibold text-gray-800 mb-4 text-center">คลิกบนแผนที่เพื่อระบุละติจูดและลองจิจูด</h3>
+    <h3 class="text-2xl font-semibold text-gray-800 mb-4 text-center">Location Tracker</h3>
     
     <!-- Map container -->
     <div id="map" class="rounded-lg border border-gray-300">
@@ -138,7 +138,7 @@
     </div>
     
     <!-- Latitude and Longitude display (just below map) -->
-    <div class="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-8 mt-4 text-xs font-medium text-gray-700 w-full flex-wrap">
+    <div class="flex items-center justify-center space-x-8 mt-4 text-xs font-medium text-gray-700 w-full">
       <p>Latitude: <span id="lat" class="font-bold text-blue-600">--</span></p>
       <p>Longitude: <span id="lng" class="font-bold text-blue-600">--</span></p>
     </div>
@@ -696,7 +696,7 @@
       }
 
       let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-      csvContent += "ID,ID พนักงาน,ละติจูด,ลองจิจูด,เวลาที่บันทึก,ลิงก์ Google Maps\n";
+      csvContent += "ID,ID พนักงาน,Latitude,Longitude,เวลาที่บันทึก,ลิงก์ Google Maps\n";
 
       savedLocations.forEach(function(loc) {
         const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`;

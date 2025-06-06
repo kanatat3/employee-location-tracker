@@ -23,16 +23,17 @@
       overflow-x: hidden; /* Prevent horizontal scrolling */
       scroll-behavior: smooth; /* Smooth scrolling for HTML */
     }
-    /* Main container should allow scrolling if content overflows */
+    /* Main container should allow vertical scrolling */
     body {
       height: 100vh; /* Set body height to 100% of viewport height */
       overflow-y: auto; /* Allow vertical scrolling for the body */
     }
-    /* Map container fixed height */
+    /* Map container fixed height and relative for absolute positioning of children */
     #map {
       height: 400px;
       width: 100%;
-      /* No sticky position or related z-index here */
+      position: relative; /* Essential for absolute positioning of children elements */
+      overflow: hidden; /* Ensure content within map doesn't overflow its rounded corners */
     }
     /* Styles for the confirmation modal */
     .modal-overlay {
@@ -57,7 +58,6 @@
     td {
       padding: 0.25rem 0.5rem;
     }
-    /* No sticky header for map and controls */
     /* Back button position adjusted relative to the main page container */
     #backButton {
       position: absolute; /* Keep it absolute to the main container */
@@ -82,6 +82,38 @@
       font-size: 1rem;
       font-weight: 500;
     }
+
+    /* topControlSection now contains employee ID and action buttons */
+    #topControlSection {
+      width: 100%;
+      padding: 16px 24px; /* Consistent padding */
+      background-color: white;
+      border-radius: 0.75rem; /* rounded-xl */
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      border: 1px solid #e2e8f0; /* border-gray-200 */
+      /* No max-h or overflow-y-auto here, content dictates height */
+    }
+    /* Styles for the search/current location section outside the map */
+    #searchAndCurrentLocationControls {
+        padding: 4px; /* Reduced padding here for a smaller look */
+        background-color: white;
+        border-radius: 0.75rem; /* rounded-xl */
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e2e8f0; /* border-gray-200 */
+        margin-top: 1rem; /* mt-4 */
+    }
+    /* Adjustments for elements within searchAndCurrentLocationControls for smaller size */
+    #searchAndCurrentLocationControls label {
+        font-size: 0.75rem; /* text-xs */
+    }
+    #searchAndCurrentLocationControls input {
+        padding: 0.125rem 0.25rem; /* py-0.5 px-1, even more compact */
+        font-size: 0.75rem; /* text-xs */
+    }
+    #searchAndCurrentLocationControls button {
+        padding: 0.125rem 0.5rem; /* py-0.5 px-2, even more compact */
+        font-size: 0.75rem; /* text-xs */
+    }
   </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen bg-blue-50 p-4">
@@ -93,40 +125,46 @@
     </button>
 
     <h3 class="text-2xl font-semibold text-gray-800 mb-4 text-center">คลิกบนแผนที่เพื่อระบุละติจูดและลองจิจูด</h3>
-    <!-- Map container -->
-    <div id="map" class="rounded-lg border border-gray-300 overflow-hidden"></div>
     
-    <!-- Latitude and Longitude display (moved here, outside topControlSection) -->
+    <!-- Map container -->
+    <div id="map" class="rounded-lg border border-gray-300">
+      <!-- Leaflet map will render here -->
+      <!-- No controls are directly inside the map anymore -->
+    </div>
+    
+    <!-- Latitude and Longitude display (just below map) -->
     <div class="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-8 mt-4 text-xs font-medium text-gray-700 w-full flex-wrap">
       <p>Latitude: <span id="lat" class="font-bold text-blue-600">--</span></p>
       <p>Longitude: <span id="lng" class="font-bold text-blue-600">--</span></p>
     </div>
 
-    <!-- Panel Controls (now a regular div, not sticky) -->
-    <div id="topControlSection" class="w-full max-h-[300px] overflow-y-auto px-4 py-3 bg-white border border-gray-200 rounded-md shadow-sm">
-        
-        <!-- Employee ID Input (moved to top of panel controls) -->
-        <div class="w-full flex flex-col sm:flex-row items-center sm:space-x-4 mt-2">
-          <label for="employeeIdInput" class="text-gray-700 text-lg font-medium sm:w-1/4">ID พนักงาน:</label>
-          <input type="text" id="employeeIdInput" placeholder="เช่น 824001, 824002, 824003" 
-             class="mt-1 sm:mt-0 flex-grow p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800">
-        </div>
-
-        <!-- Search Input for Location Name and Current Location Button -->
-        <div class="w-full flex flex-col sm:flex-row items-center sm:space-x-4 mt-4">
-          <label for="locationSearchInput" class="text-gray-700 text-lg font-medium sm:w-1/4">ค้นหาสถานที่:</label>
-          <input type="text" id="locationSearchInput" placeholder="เช่น กรุงเทพมหานคร, สุวรรณภูมิ" 
-                class="mt-1 sm:mt-0 flex-grow p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800">
-          <button id="searchLocationButton" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 mt-2 sm:mt-0">
+    <!-- Search and Current Location Controls (moved here, below Lat/Lng) -->
+    <div id="searchAndCurrentLocationControls" class="w-full mt-4 bg-white border border-gray-200 rounded-md shadow-sm">
+        <div class="w-full flex flex-col sm:flex-row items-center sm:space-x-4 p-1"> <!-- Reduced padding here -->
+          <!-- Search Input for Location Name and Current Location Button -->
+          <label for="locationSearchInput" class="text-gray-700 text-xs font-medium whitespace-nowrap">ค้นหา:</label>
+          <input type="text" id="locationSearchInput" placeholder="เช่น กรุงเทพฯ" 
+                class="mt-1 sm:mt-0 flex-grow py-0.5 px-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-xs">
+          <button id="searchLocationButton" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-0.5 px-1 rounded-md transition duration-300 ease-in-out transform hover:scale-105 mt-2 sm:mt-0 text-xs">
             ค้นหา
           </button>
-          <button id="currentLocationButton" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 ml-2">
+          <button id="currentLocationButton" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-0.5 px-1 rounded-md transition duration-300 ease-in-out transform hover:scale-105 ml-2 mt-2 sm:mt-0 text-xs">
             ตำแหน่งปัจจุบัน
           </button>
         </div>
-        <!-- New div for search results -->
-        <div id="searchResultsContainer" class="w-full mt-2 hidden bg-white border border-gray-300 rounded-md shadow-md max-h-60 overflow-y-auto">
+        <!-- Search results container -->
+        <div id="searchResultsContainer" class="w-full mt-2 hidden bg-white border border-gray-300 rounded-md shadow-md max-h-40 overflow-y-auto">
           <!-- Search results will be appended here -->
+        </div>
+    </div> <!-- End Search and Current Location Controls -->
+
+    <!-- Panel Controls (now holds Employee ID input and action buttons) -->
+    <div id="topControlSection" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-md shadow-sm mt-4">
+        <!-- Input field for employee ID (moved here, above normal action buttons) -->
+        <div class="w-full flex flex-col sm:flex-row items-center sm:space-x-4">
+          <label for="employeeIdInput" class="text-gray-700 text-lg font-medium sm:w-1/4">ID พนักงาน:</label>
+          <input type="text" id="employeeIdInput" placeholder="เช่น 824001, 824002, 824003" 
+             class="mt-1 sm:mt-0 flex-grow p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800">
         </div>
 
         <!-- Buttons for saving, clearing, and exporting locations -->
@@ -245,6 +283,8 @@
     const editActionButtonsDiv = document.getElementById('editActionButtons');
     const normalActionButtonsDiv = document.getElementById('normalActionButtons'); // Get the new div
     const undoButton = document.getElementById('undoButton');
+    const searchLocationButton = document.getElementById('searchLocationButton'); // Get the search button
+    const currentLocationButton = document.getElementById('currentLocationButton'); // Get the current location button
 
 
     // Define a custom red icon for the current marker
@@ -390,8 +430,8 @@
           .bindPopup(`
             <b>ID:</b> ${loc.id}<br>
             <b>ID พนักงาน:</b> ${loc.name}<br>
-            <b>ละติจูด:</b> ${loc.lat}<br>
-            <b>ลองจิจูด:</b> ${loc.lng}<br>
+            <b>Latitude:</b> ${loc.lat}<br>
+            <b>Longitude:</b> ${loc.lng}<br>
             <b>บันทึกเมื่อ:</b> ${loc.timestamp}<br>
             <div style="margin-top: 10px; display: flex; justify-content: space-between;">
                 <a href="${googleMapsUrl}" target="_blank" style="background-color: #4285f4; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; display: inline-block;">
@@ -837,7 +877,7 @@
         employeeIdInput.value = ''; // Clear employee ID input
         editActionButtonsDiv.classList.add('hidden'); // Hide edit action buttons
         normalActionButtonsDiv.classList.remove('hidden'); // Show normal action buttons
-        showMessage('ยกเลิกการแก้ไขแล้ว', 'info');
+        showMessage('ยกเลิกการดำเนินการแล้ว', 'info');
         renderPermanentMarkers(); // Re-render permanent markers to show original blue one
     });
 
@@ -919,7 +959,7 @@
         }, 500); 
       });
 
-      document.getElementById('searchLocationButton').addEventListener('click', () => {
+      searchLocationButton.addEventListener('click', () => { // Corrected element reference
         searchLocation(locationSearchInput.value);
       });
 
@@ -932,7 +972,7 @@
           showClearConfirmation();
       });
       document.getElementById('exportCsvButton').addEventListener('click', exportToCSV);
-      document.getElementById('currentLocationButton').addEventListener('click', getCurrentLocation);
+      currentLocationButton.addEventListener('click', getCurrentLocation); // Corrected element reference
       
       // Global confirm/cancel for ALL modal actions
       confirmClearButton.addEventListener('click', function() {

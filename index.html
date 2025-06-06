@@ -1,231 +1,411 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Employee Location Tracker</title>
-  <meta charset="utf-8" />
+  <meta charset="utf-8">
+  <title>Employee Location Tracker (ปรับอินพุต & ออโต้คอมพรีท)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet CSS for map styling -->
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <!-- Tailwind CSS for modern, responsive utility styling -->
+
+  <!-- TailwindCSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts - Sarabun for a clean look -->
+
+  <!-- Google Fonts (Sarabun) -->
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Font Awesome for icons (e.g., back arrow) -->
+
+  <!-- Font Awesome for icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
   <style>
-    /* Ensure the body and html take full height for proper layout */
     html, body {
       height: 100%;
       margin: 0;
       font-family: 'Sarabun', sans-serif;
-      overflow-x: hidden; /* Prevent horizontal scrolling */
-      scroll-behavior: smooth; /* Smooth scrolling for HTML */
+      background-color: #EFF6FF; /* light blue-50 */
     }
-    /* Main container should allow vertical scrolling */
     body {
-      height: 100vh; /* Set body height to 100% of viewport height */
-      overflow-y: auto; /* Allow vertical scrolling for the body */
+      overflow-y: auto;
+      padding: 1rem;
     }
-    /* Map container fixed height and relative for absolute positioning of children */
+
+    /* ---------- Map ---------- */
     #map {
-      height: 400px;
+      height: 300px;
       width: 100%;
-      position: relative; /* Essential for absolute positioning of children elements */
-      overflow: hidden; /* Ensure content within map doesn't overflow its rounded corners */
+      border: 1px solid #CBD5E1; /* gray-300 */
+      border-radius: 0.5rem;      /* rounded-lg */
+      overflow: hidden;
     }
-    /* Styles for the confirmation modal */
+
+    /* ------ Message Box ------ */
+    #messageBox {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1001;
+      padding: 0.75rem 1.25rem;
+      border-bottom-left-radius: 0.5rem;
+      border-bottom-right-radius: 0.5rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      font-size: 1rem;
+      font-weight: 500;
+      display: none;
+    }
+
+    /* ---- Confirmation Modal ---- */
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background-color: rgba(0, 0, 0, 0.5);
-      display: flex;
+      background-color: rgba(0,0,0,0.5);
+      display: none;
       align-items: center;
       justify-content: center;
       z-index: 1000;
     }
     .modal-content {
-      background-color: #fff;
-      padding: 24px;
-      border-radius: 12px;
-      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+      background-color: white;
+      border-radius: 0.75rem; /* rounded-xl */
+      padding: 1.5rem;       /* p-6 */
+      box-shadow: 0 10px 15px rgba(0,0,0,0.1);
       max-width: 400px;
       width: 90%;
       text-align: center;
     }
-    /* Styling for cells (no longer editable directly, only via input field) */
-    td {
-      padding: 0.25rem 0.5rem;
-    }
-    /* Back button position adjusted relative to the main page container */
-    #backButton {
-      position: absolute; /* Keep it absolute to the main container */
-      top: 24px; /* Adjusted to match top padding of the main container */
-      left: 24px; /* Adjusted to match left padding of the main container */
-      z-index: 100; /* Ensure back button is above other content */
-    }
 
-    /* Message box at the top of the screen */
-    #messageBox {
-      position: fixed; /* Make it float above content */
-      top: 0; /* Stick to the top */
-      left: 50%; /* Center horizontally */
-      transform: translateX(-50%); /* Adjust for true centering */
-      z-index: 1001; /* Ensure it's on top of everything */
-      width: auto; /* Adjust width based on content */
-      max-width: 90%; /* Max width to prevent overflow on small screens */
-      padding: 10px 20px; /* Added padding */
-      border-radius: 0 0 8px 8px; /* Rounded corners only at the bottom */
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Subtle shadow */
-      text-align: center;
-      font-size: 1rem;
-      font-weight: 500;
+    /* ==== De-emphasized Input Row (Shrunken) ==== */
+    .deemphasized-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;              /* space between rows */
+      border: 1px solid #CBD5E1;/* gray-300 */
+      border-radius: 0.375rem;  /* rounded-md */
+      background-color: #F8FAFC;/* gray-100 (very subtle) */
+      padding: 0.5rem;         /* p-2 */
+      margin-top: 1rem;         /* mt-4 */
     }
-
-    /* topControlSection now contains employee ID and action buttons */
-    #topControlSection {
+    .deemphasized-container .input-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       width: 100%;
-      padding: 16px 24px; /* Consistent padding */
+    }
+    .deemphasized-container label {
+      font-size: 0.75rem;      /* text-xs */
+      font-weight: 500;
+      min-width: 60px;
+      color: #4A5568;          /* gray-700 */
+    }
+    .deemphasized-container .search-wrapper {
+      position: relative;
+      flex: 1;
+    }
+    .deemphasized-container input {
+      width: 100%;
+      padding: 0.25rem 0.5rem;  /* py-1 px-2 */
+      font-size: 0.75rem;      /* text-xs */
+      border: 1px solid #CBD5E1;/* gray-300 */
+      border-radius: 0.375rem; /* rounded-md */
+      outline: none;
+    }
+    .deemphasized-container .clear-icon {
+      position: absolute;
+      right: 0.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #A0AEC0; /* gray-400 */
+      cursor: pointer;
+      display: none;
+      font-size: 0.875rem;
+    }
+    .deemphasized-container button {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;             /* small gap between icon + text */
+      padding: 0.25rem 0.5rem;  /* py-1 px-2 */
+      font-size: 0.75rem;      /* text-xs */
+      font-weight: 600;
+      border-radius: 0.375rem; /* rounded-md */
+      border: none;
+      transition: transform 0.15s ease-in-out;
+    }
+    .deemphasized-container button:hover {
+      transform: scale(1.02);
+    }
+    /* “ค้นหา” button */
+    .btn-search {
+      background-color: #2D3748; /* gray-800 */
+      color: white;
+    }
+    .btn-search:hover {
+      background-color: #1A202C; /* gray-900 */
+    }
+    /* “ตำแหน่งปัจจุบัน” button */
+    .btn-current {
+      background-color: #805AD5; /* purple-600 */
+      color: white;
+    }
+    .btn-current:hover {
+      background-color: #6B46C1; /* purple-700 */
+    }
+
+    /* ---- Autocomplete List ---- */
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #CBD5E1; /* gray-300 */
+      border-top: none;
+      z-index: 50;
+      max-height: 150px;
+      overflow-y: auto;
+      border-bottom-left-radius: 0.375rem;
+      border-bottom-right-radius: 0.375rem;
+    }
+    .autocomplete-item {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;       /* text-xs */
+      color: #4A5568;           /* gray-700 */
+      cursor: pointer;
+    }
+    .autocomplete-item:hover {
+      background-color: #EDF2F7; /* gray-100 */
+    }
+
+    /* -------- Action Buttons (Bottom Row) -------- */
+    .action-row {
       background-color: white;
-      border-radius: 0.75rem; /* rounded-xl */
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      border: 1px solid #e2e8f0; /* border-gray-200 */
-      /* No max-h or overflow-y-auto here, content dictates height */
+      border: 1px solid #E2E8F0; /* gray-200 */
+      border-radius: 0.5rem;     /* rounded-lg */
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 0.75rem;          /* p-3 */
+      margin-top: 1rem;          /* mt-4 */
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;              /* space between buttons */
+      justify-content: center;
     }
-    /* Styles for the combined search/employee ID/current location section */
-    #combinedInputControls {
-        padding: 4px; /* Reduced padding for a smaller look */
-        background-color: white;
-        border-radius: 0.75rem; /* rounded-xl */
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        border: 1px solid #e2e8f0; /* border-gray-200 */
-        margin-top: 1rem; /* mt-4 */
+    .action-row button {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;   /* rounded-md */
+      transition: transform 0.15s ease-in-out;
+      border: none;
     }
-    /* Adjustments for elements within combinedInputControls for smaller size */
-    #combinedInputControls label {
-        font-size: 0.75rem; /* text-xs */
+    .action-row button:hover {
+      transform: scale(1.02);
     }
-    #combinedInputControls input {
-        padding: 0.125rem 0.25rem; /* py-0.5 px-1, even more compact */
-        font-size: 0.75rem; /* text-xs */
+    .bg-save {
+      background-color: #38A169; /* green-500 */
+      color: white;
     }
-    #combinedInputControls button {
-        padding: 0.125rem 0.5rem; /* py-0.5 px-2, even more compact */
-        font-size: 0.75rem; /* text-xs */
+    .bg-save:hover {
+      background-color: #2F855A; /* green-600 */
     }
-    /* Ensure employee ID input is compact within its div */
-    #employeeIdInput {
-      padding: 0.125rem 0.25rem; /* py-0.5 px-1 */
-      font-size: 0.75rem; /* text-xs */
+    .bg-export {
+      background-color: #3182CE; /* blue-500 */
+      color: white;
+    }
+    .bg-export:hover {
+      background-color: #2B6CB0; /* blue-600 */
+    }
+    .bg-back {
+      background-color: #2D3748; /* gray-800 */
+      color: white;
+    }
+    .bg-back:hover {
+      background-color: #1A202C; /* gray-900 */
+    }
+
+    /* ---- Saved Locations Table + “Clear All” at top-right ---- */
+    .table-container {
+      position: relative;
+      margin-top: 1rem;          /* mt-4 */
+      border: 1px solid #CBD5E1; /* gray-300 */
+      border-radius: 0.5rem;     /* rounded-lg */
+      background-color: white;
+      overflow: hidden;
+    }
+    .table-container h4 {
+      margin: 0;
+      padding: 0.75rem 1rem;
+      background-color: #F7FAFC; /* gray-100 */
+      font-size: 1rem;
+      font-weight: 600;
+      border-bottom: 1px solid #E2E8F0;
+    }
+    .btn-clear-top {
+      position: absolute;
+      top: 0.75rem;
+      right: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background-color: #E53E3E; /* red-500 */
+      color: white;
+      font-size: 0.875rem;      /* text-sm */
+      font-weight: 600;
+      padding: 0.25rem 0.5rem;  /* py-1 px-2 */
+      border: none;
+      border-radius: 0.375rem; /* rounded-md */
+      transition: transform 0.15s ease-in-out;
+      z-index: 10;
+    }
+    .btn-clear-top:hover {
+      background-color: #C53030; /* red-600 */
+      transform: scale(1.02);
+    }
+    .table-scroll {
+      max-height: 240px;       /* fixed height for the body */
+      overflow-y: auto;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      padding: 0.5rem 0.75rem;  /* py-2 px-3 */
+      font-size: 0.875rem;      /* text-sm */
+      color: #4A5568;           /* gray-700 */
+      border-bottom: 1px solid #E2E8F0; /* gray-200 */
+    }
+    th {
+      background-color: #F7FAFC; /* gray-100 */
+      font-weight: 600;
+    }
+    .hidden-col {
+      display: none;
+    }
+
+    @media (min-width: 640px) {
+      .deemphasized-container {
+        padding: 0.5rem;  /* p-2 */
+      }
+      .action-row {
+        padding: 1rem;    /* p-4 */
+      }
+      .btn-clear-top {
+        top: 1rem;
+        right: 1.25rem;
+      }
+      .table-scroll {
+        max-height: 300px;
+      }
     }
   </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen bg-blue-50 p-4">
-  <div class="relative flex flex-col items-center justify-center w-full max-w-4xl bg-white shadow-lg rounded-xl p-6 space-y-4 mb-8">
-    
-    <!-- Back Button Icon (position relative to the outermost .relative container) -->
-    <button id="backButton" class="absolute bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-3 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75" title="Back">
-      <i class="fas fa-arrow-left"></i>
-    </button>
 
-    <h3 class="text-2xl font-semibold text-gray-800 mb-4 text-center">Location Tracker</h3>
-    
-    <!-- Map container -->
-    <div id="map" class="rounded-lg border border-gray-300">
-      <!-- Leaflet map will render here -->
-      <!-- No controls are directly inside the map anymore -->
-    </div>
-    
-    <!-- Latitude and Longitude display (just below map) -->
-    <div class="flex items-center justify-center space-x-8 mt-4 text-xs font-medium text-gray-700 w-full">
+<body>
+  <div class="mx-auto max-w-md bg-white rounded-xl shadow-lg p-6 space-y-4">
+    <h3 class="text-2xl font-semibold text-gray-800 text-center">Location Tracker</h3>
+
+    <!-- Map -->
+    <div id="map"></div>
+
+    <!-- Lat / Lng display -->
+    <div class="flex justify-center gap-6 text-xs font-medium text-gray-700 mt-2">
       <p>Latitude: <span id="lat" class="font-bold text-blue-600">--</span></p>
       <p>Longitude: <span id="lng" class="font-bold text-blue-600">--</span></p>
     </div>
 
-    <!-- Combined Input Controls (Employee ID, Search, Current Location) -->
-    <div id="combinedInputControls" class="w-full mt-4 bg-white border border-gray-200 rounded-md shadow-sm">
-        <div class="w-full flex flex-col sm:flex-row items-center sm:space-x-4 p-1">
-            <!-- Employee ID Input -->
-            <div class="w-full flex items-center space-x-2 flex-grow sm:w-1/2 mb-2 sm:mb-0">
-                <label for="employeeIdInput" class="text-gray-700 text-sm font-medium whitespace-nowrap">ID พนักงาน:</label>
-                <input type="text" id="employeeIdInput" placeholder="เช่น 824001" 
-                   class="flex-grow py-0.5 px-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-sm">
-            </div>
-
-            <!-- Search Input for Location Name and Current Location Button -->
-            <div class="w-full flex items-center space-x-2 flex-grow sm:w-1/2 mt-0">
-              <label for="locationSearchInput" class="text-gray-700 text-sm font-medium whitespace-nowrap">ค้นหา:</label>
-              <input type="text" id="locationSearchInput" placeholder="เช่น กรุงเทพฯ" 
-                    class="flex-grow py-0.5 px-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-sm">
-              <button id="searchLocationButton" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-0.5 px-1 rounded-md transition duration-300 ease-in-out transform hover:scale-105 text-sm">
-                ค้นหา
-              </button>
-              <button id="currentLocationButton" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-0.5 px-1 rounded-md transition duration-300 ease-in-out transform hover:scale-105 ml-2 text-sm">
-                ตำแหน่งปัจจุบัน
-              </button>
-            </div>
-        </div> <!-- End of combined input row -->
-        
-        <!-- Search results container -->
-        <div id="searchResultsContainer" class="w-full mt-2 hidden bg-white border border-gray-300 rounded-md shadow-md max-h-40 overflow-y-auto">
-          <!-- Search results will be appended here -->
+    <!-- ==== De-emphasized Input Row (Shrunken) ==== -->
+    <div class="deemphasized-container">
+      <!-- Row 1: ID พนักงาน -->
+      <div class="input-row">
+        <label for="employeeIdInput">ID พนักงาน</label>
+        <input
+          id="employeeIdInput"
+          type="text"
+          placeholder="เช่น 824001"
+        />
+      </div>
+      <!-- Row 2: ค้นหา + ปุ่มค้นหา + ปุ่มตำแหน่งปัจจุบัน -->
+      <div class="input-row">
+        <label for="locationSearchInput">ค้นหา</label>
+        <div class="search-wrapper">
+          <input
+            id="locationSearchInput"
+            type="text"
+            placeholder="เช่น กรุงเทพฯ"
+            autocomplete="off"
+          />
+          <i id="clearSearchIcon" class="fas fa-times clear-icon"></i>
+          <div id="autocompleteList" class="autocomplete-list hidden"></div>
         </div>
-    </div> <!-- End Combined Input Controls -->
-
-
-    <!-- Panel Controls (now holds action buttons related to saving/clearing) -->
-    <div id="topControlSection" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-md shadow-sm mt-4">
-        <!-- Buttons for saving, clearing, and exporting locations -->
-        <div id="normalActionButtons" class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full justify-center flex-wrap">
-          <button id="saveButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
-            Save
-          </button>
-          <button id="clearAllButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
-            Clear all
-          </button>
-          <button id="exportCsvButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
-            Export
-          </button>
-          <button id="undoButton" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-6 rounded-lg shadow-md transition transform hover:scale-105">
-            Back
-          </button>
-        </div>
-
-        <!-- New edit action buttons -->
-        <div id="editActionButtons" class="flex space-x-4 mt-4 hidden">
-          <button id="confirmEditButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition transform hover:scale-105">
-            Save
-          </button>
-          <button id="cancelEditButton" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg shadow-md transition transform hover:scale-105">
-            Cancel
-          </button>
-        </div>
-    </div> <!-- End Panel Controls -->
-
-    <!-- Message box for user feedback -->
-    <div id="messageBox" class="mt-4 p-3 bg-blue-100 text-blue-800 rounded-lg hidden text-center w-full">
-      <p id="messageText"></p>
+        <button id="searchLocationButton" class="btn-search">
+          <i class="fas fa-search"></i>
+          <span>ค้นหา</span>
+        </button>
+        <button id="currentLocationButton" class="btn-current">
+          <i class="fas fa-map-marker-alt"></i>
+          <span>ตำแหน่งปัจจุบัน</span>
+        </button>
+      </div>
     </div>
 
-    <!-- Saved Locations Table -->
-    <div class="w-full mt-8"> 
-      <h4 class="text-xl font-semibold text-gray-800 mb-4 text-center">ตำแหน่งที่บันทึกไว้</h4>
-      <div class="overflow-auto max-h-[300px] border border-gray-300 rounded-lg shadow-sm">
-        <table class="min-w-full bg-white">
+    <!-- ===== Action Buttons (Bottom Row) ===== -->
+    <div class="action-row">
+      <button id="saveButton" class="bg-save">
+        <i class="fas fa-save"></i>
+        <span>Save</span>
+      </button>
+      <button id="exportCsvButton" class="bg-export">
+        <i class="fas fa-file-export"></i>
+        <span>Export</span>
+      </button>
+      <button id="backButton" class="bg-back">
+        <i class="fas fa-arrow-left"></i>
+        <span>Back</span>
+      </button>
+    </div>
+
+    <!-- Hidden Edit Buttons (only when editing) -->
+    <div id="editActionButtons" class="hidden flex justify-center gap-4">
+      <button id="confirmEditButton" class="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-md shadow">
+        <i class="fas fa-check"></i>
+        <span>Save Edit</span>
+      </button>
+      <button id="cancelEditButton" class="flex items-center gap-2 bg-gray-400 hover:bg-gray-500 text-white py-2 px-4 rounded-md shadow">
+        <i class="fas fa-times"></i>
+        <span>Cancel</span>
+      </button>
+    </div>
+
+    <!-- Message Box -->
+    <div id="messageBox"></div>
+
+    <!-- ===== Saved Locations Table + Clear All top-right ===== -->
+    <div class="table-container">
+      <!-- Table header with title -->
+      <h4>ตำแหน่งที่บันทึกไว้</h4>
+
+      <!-- “Clear All” at top-right -->
+      <button id="clearAllButton" class="btn-clear-top">
+        <i class="fas fa-trash-alt"></i>
+        <span>Clear All</span>
+      </button>
+
+      <!-- Scrollable table body -->
+      <div class="table-scroll">
+        <table>
           <thead>
-            <tr class="bg-gray-100 border-b border-gray-200">
-              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700 rounded-tl-lg">ID</th>
-              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">ID พนักงาน</th>
-              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">ละติจูด</th>
-              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">ลองจิจูด</th>
-              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">เวลาที่บันทึก</th>
-              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">ลิงก์ Google Maps</th>
-              <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700 rounded-tr-lg">การดำเนินการ</th>
+            <tr>
+              <th class="text-left">ID</th>
+              <th class="text-left">ID พนักงาน</th>
+              <th class="hidden-col">Latitude</th>
+              <th class="hidden-col">Longitude</th>
+              <th class="text-left">Timestamp</th>
+              <th class="text-left">Google Maps</th>
+              <th class="text-left">Actions</th>
             </tr>
           </thead>
           <tbody id="savedLocationsTableBody">
-            <!-- Rows will be dynamically inserted here -->
             <tr class="text-center">
               <td colspan="7" class="py-4 px-4 text-gray-500">ยังไม่มีตำแหน่งที่บันทึกไว้</td>
             </tr>
@@ -233,105 +413,101 @@
         </table>
       </div>
     </div>
-
   </div>
 
   <!-- Confirmation Modal -->
-  <div id="confirmationModal" class="modal-overlay hidden">
+  <div id="confirmationModal" class="modal-overlay">
     <div class="modal-content">
       <h4 id="modalTitle" class="text-xl font-bold text-gray-800 mb-4">ยืนยันการลบข้อมูล</h4>
-      <p id="modalMessage" class="text-gray-700 mb-6">คุณแน่ใจหรือไม่ว่าต้องการลบตำแหน่งที่บันทึกไว้ทั้งหมด? การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
-      <div class="flex justify-center space-x-4">
-        <button id="confirmClearButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
-          ยืนยันการล้าง
+      <p id="modalMessage" class="text-gray-700 mb-6">
+        คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้?<br>
+        การดำเนินการนี้ไม่สามารถย้อนกลับได้
+      </p>
+      <div class="flex justify-center gap-4">
+        <button id="confirmClearButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-5 rounded-lg shadow">
+          ยืนยัน
         </button>
-        <button id="cancelClearButton" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+        <button id="cancelClearButton" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-5 rounded-lg shadow">
           ยกเลิก
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Leaflet JavaScript for map functionality -->
+  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    var map; // Global variable for the map instance
-    var currentMarker = null; // Marker for the currently selected location (red, non-draggable by default)
-    var permanentMarkers = L.layerGroup(); // Layer group to hold all saved location markers (blue)
-    var permanentMarkersMap = {}; // Maps loc.id to L.Marker object for easy access/removal
-    var currentLat = null; // Variable to store the current latitude
-    var currentLng = null; // Variable to store the current longitude
-    var savedLocations = []; // Array to store all saved location objects
-    var nextId = 1; // Counter for unique IDs
-    var editingId = null; // Global variable to track the ID of the location being edited
-    var editingMarker = null; // Global variable for the draggable yellow marker used in edit mode
-    let undoStack = []; // Array เก็บ snapshot ของ savedLocations
+    /* -------------- Global Variables -------------- */
+    let map;
+    let currentMarker = null;
+    let permanentMarkers = L.layerGroup();
+    let permanentMarkersMap = {};
+    let currentLat = null;
+    let currentLng = null;
+    let savedLocations = [];
+    let nextId = 1;
+    let editingId = null;
+    let editingMarker = null;
+    let undoStack = [];
 
-    // Variables for confirmation modal dynamic content
-    var actionType = null; // 'clearAll' or 'deleteSingle'
-    var pendingDeleteIndex = null; // Stores the index of the item to delete if actionType is 'deleteSingle'
+    let actionType = null;         // 'clearAll' or 'deleteSingle'
+    let pendingDeleteIndex = null;
 
-    const messageBox = document.getElementById('messageBox');
-    const messageText = document.getElementById('messageText');
+    /* ------------ DOM References ------------ */
+    const messageBox              = document.getElementById('messageBox');
     const savedLocationsTableBody = document.getElementById('savedLocationsTableBody');
-    const employeeIdInput = document.getElementById('employeeIdInput'); 
-    const locationSearchInput = document.getElementById('locationSearchInput'); 
-    const searchResultsContainer = document.getElementById('searchResultsContainer'); 
+    const employeeIdInput         = document.getElementById('employeeIdInput');
+    const locationSearchInput     = document.getElementById('locationSearchInput');
+    const clearSearchIcon         = document.getElementById('clearSearchIcon');
+    const autocompleteList        = document.getElementById('autocompleteList');
+    const confirmationModal       = document.getElementById('confirmationModal');
+    const modalTitle              = document.getElementById('modalTitle');
+    const modalMessage            = document.getElementById('modalMessage');
+    const confirmClearButton      = document.getElementById('confirmClearButton');
+    const cancelClearButton       = document.getElementById('cancelClearButton');
+    const confirmEditButton       = document.getElementById('confirmEditButton');
+    const cancelEditButton        = document.getElementById('cancelEditButton');
+    const editActionButtonsDiv    = document.getElementById('editActionButtons');
+    const normalActionButtonsDiv  = document.querySelector('.action-row');
 
-    // Confirmation Modal elements
-    const confirmationModal = document.getElementById('confirmationModal');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalMessage = document.getElementById('modalMessage');
-    const confirmClearButton = document.getElementById('confirmClearButton'); // This button is now dynamic
-    const cancelClearButton = document.getElementById('cancelClearButton');
-    const backButton = document.getElementById('backButton'); 
+    const searchLocationButton    = document.getElementById('searchLocationButton');
+    const currentLocationButton   = document.getElementById('currentLocationButton');
+    const saveButton              = document.getElementById('saveButton');
+    const clearAllButton          = document.getElementById('clearAllButton');
+    const exportCsvButton         = document.getElementById('exportCsvButton');
+    const backButton              = document.getElementById('backButton');
 
-    // Edit action buttons
-    const confirmEditButton = document.getElementById('confirmEditButton');
-    const cancelEditButton = document.getElementById('cancelEditButton');
-    const editActionButtonsDiv = document.getElementById('editActionButtons');
-    const normalActionButtonsDiv = document.getElementById('normalActionButtons'); // Get the new div
-    const undoButton = document.getElementById('undoButton');
-    const searchLocationButton = document.getElementById('searchLocationButton'); // Get the search button
-    const currentLocationButton = document.getElementById('currentLocationButton'); // Get the current location button
-
-
-    // Define a custom red icon for the current marker
-    var redIcon = new L.Icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-      iconSize: [25, 41],
+    /* ---------- Custom Leaflet Icons ---------- */
+    const redIcon = new L.Icon({
+      iconUrl:    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+      shadowUrl:  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+      iconSize:   [25, 41],
       iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
+      popupAnchor:[1, -34],
+      shadowSize: [41, 41]
+    });
+    const blueIcon = new L.Icon({
+      iconUrl:    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+      shadowUrl:  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+      iconSize:   [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor:[1, -34],
+      shadowSize: [41, 41]
+    });
+    const yellowIcon = new L.Icon({
+      iconUrl:    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+      shadowUrl:  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+      iconSize:   [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor:[1, -34],
       shadowSize: [41, 41]
     });
 
-    // Define a custom blue icon for permanent markers (default Leaflet icon is blue)
-    var blueIcon = new L.Icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41]
-    });
-
-    // Define a custom yellow icon for the editing marker
-    var yellowIcon = new L.Icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41]
-    });
-
-    // --- Helper Functions ---
-    function showMessage(message, type = 'info') {
-      messageText.textContent = message;
-      messageBox.classList.remove('hidden');
-      messageBox.classList.remove('bg-blue-100', 'text-blue-800', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-yellow-100', 'text-yellow-800');
-      
+    /* ---------- Helper: Show Message ---------- */
+    function showMessage(msg, type = 'info') {
+      messageBox.textContent = msg;
+      messageBox.className = '';
+      messageBox.style.display = 'flex';
       if (type === 'success') {
         messageBox.classList.add('bg-green-100', 'text-green-800');
       } else if (type === 'error') {
@@ -341,183 +517,139 @@
       } else {
         messageBox.classList.add('bg-blue-100', 'text-blue-800');
       }
-      setTimeout(() => {
-        messageBox.classList.add('hidden');
-      }, 3000);
+      setTimeout(() => { messageBox.style.display = 'none'; }, 3000);
     }
 
-    function showClearConfirmation() {
-        confirmationModal.classList.remove('hidden');
+    /* ------ Show / Hide Confirmation Modal ------ */
+    function showConfirmation() {
+      confirmationModal.style.display = 'flex';
+    }
+    function hideConfirmation() {
+      confirmationModal.style.display = 'none';
+      modalTitle.textContent = 'ยืนยันการลบข้อมูล';
+      modalMessage.innerHTML = 'คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้?<br>การดำเนินการนี้ไม่สามารถย้อนกลับได้';
+      confirmClearButton.textContent = 'ยืนยัน';
     }
 
-    function hideClearConfirmation() {
-        confirmationModal.classList.add('hidden');
-        // Reset modal content to default for "clear all" next time
-        modalTitle.textContent = 'ยืนยันการลบข้อมูล';
-        modalMessage.innerHTML = 'คุณแน่ใจหรือไม่ว่าต้องการลบตำแหน่งที่บันทึกไว้ทั้งหมด? การดำเนินการนี้ไม่สามารถย้อนกลับได้';
-        confirmClearButton.textContent = 'ยืนยันการล้าง';
-    }
-
-    // Function to update the red currentMarker's position and display
+    /* ---- Update / Hide Current Marker ---- */
     function updateCurrentMarker(lat, lng, isDraggable = false) {
-        if (!currentMarker) {
-            currentMarker = L.marker([lat, lng], {icon: redIcon, draggable: isDraggable}).addTo(map);
-            currentMarker.on('dragend', function(e) {
-                const newLatLng = e.target.getLatLng();
-                currentLat = newLatLng.lat;
-                currentLng = newLatLng.lng;
-                document.getElementById('lat').textContent = currentLat.toFixed(6);
-                document.getElementById('lng').textContent = currentLng.toFixed(6);
-            });
-        } else {
-            currentMarker.setLatLng([lat, lng]);
-            currentMarker.options.draggable = isDraggable; // Update draggable option
-            // Manually re-add/remove draggable class if icon is already rendered for visual update
-            if (currentMarker._icon) {
-                if (isDraggable) {
-                    L.DomUtil.addClass(currentMarker._icon, 'leaflet-marker-draggable');
-                } else {
-                    L.DomUtil.removeClass(currentMarker._icon, 'leaflet-marker-draggable');
-                }
-            }
-            currentMarker.addTo(map); 
+      if (!currentMarker) {
+        currentMarker = L.marker([lat, lng], { icon: redIcon, draggable: isDraggable }).addTo(map);
+        currentMarker.on('dragend', (e) => {
+          const newPos = e.target.getLatLng();
+          currentLat = newPos.lat; currentLng = newPos.lng;
+          document.getElementById('lat').textContent = currentLat.toFixed(6);
+          document.getElementById('lng').textContent = currentLng.toFixed(6);
+        });
+      } else {
+        currentMarker.setLatLng([lat, lng]);
+        currentMarker.options.draggable = isDraggable;
+        if (currentMarker._icon) {
+          if (isDraggable) L.DomUtil.addClass(currentMarker._icon, 'leaflet-marker-draggable');
+          else L.DomUtil.removeClass(currentMarker._icon, 'leaflet-marker-draggable');
         }
-        currentLat = lat;
-        currentLng = lng;
-        document.getElementById('lat').textContent = lat.toFixed(6);
-        document.getElementById('lng').textContent = lng.toFixed(6);
+        currentMarker.addTo(map);
+      }
+      currentLat = lat; currentLng = lng;
+      document.getElementById('lat').textContent = lat.toFixed(6);
+      document.getElementById('lng').textContent = lng.toFixed(6);
     }
-
-    // Function to hide the red currentMarker and clear display
     function hideCurrentMarker() {
-        if (currentMarker && map.hasLayer(currentMarker)) {
-            map.removeLayer(currentMarker);
-        }
-        currentLat = null;
-        currentLng = null;
-        document.getElementById('lat').textContent = '--';
-        document.getElementById('lng').textContent = '--';
+      if (currentMarker && map.hasLayer(currentMarker)) map.removeLayer(currentMarker);
+      currentLat = null; currentLng = null;
+      document.getElementById('lat').textContent = '--';
+      document.getElementById('lng').textContent = '--';
     }
 
-    // --- Core Logic Functions ---
-
-    function performClearAllLocations() {
-      // Before clearing, save current state for undo
-      undoStack.push(JSON.stringify(savedLocations)); 
-
-      localStorage.removeItem('allSavedLocations');
-      localStorage.removeItem('nextId');
-      savedLocations = [];
-      nextId = 1;
-      
-      hideCurrentMarker(); 
-      if (editingMarker) map.removeLayer(editingMarker); // Also remove editing marker if any
-      editingMarker = null;
-      editingId = null; // Clear editing state
-      employeeIdInput.value = '';
-      locationSearchInput.value = '';
-      searchResultsContainer.innerHTML = '';
-      searchResultsContainer.classList.add('hidden');
-      map.setView([13.7563, 100.5018], 6);
-      showMessage('ตำแหน่งที่บันทึกไว้ทั้งหมดถูกลบแล้ว!', 'success');
-      renderPermanentMarkers(); 
-      renderTable(); 
-      hideClearConfirmation(); 
-      normalActionButtonsDiv.classList.remove('hidden'); 
-      editActionButtonsDiv.classList.add('hidden'); 
-    }
-
+    /* ---- Render Permanent Markers ---- */
     function renderPermanentMarkers() {
-      permanentMarkers.clearLayers(); 
-      permanentMarkersMap = {}; 
+      permanentMarkers.clearLayers();
+      permanentMarkersMap = {};
 
-      savedLocations.forEach((loc, index) => {
+      savedLocations.forEach((loc) => {
         const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`;
-        // Permanent markers use the default blue icon
-        const marker = L.marker([loc.lat, loc.lng], {icon: blueIcon}) 
+        const marker = L.marker([loc.lat, loc.lng], { icon: blueIcon })
           .addTo(permanentMarkers)
           .bindPopup(`
             <b>ID:</b> ${loc.id}<br>
             <b>ID พนักงาน:</b> ${loc.name}<br>
-            <b>Latitude:</b> ${loc.lat}<br>
-            <b>Longitude:</b> ${loc.lng}<br>
-            <b>บันทึกเมื่อ:</b> ${loc.timestamp}<br>
-            <div style="margin-top: 10px; display: flex; justify-content: space-between;">
-                <a href="${googleMapsUrl}" target="_blank" style="background-color: #4285f4; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; display: inline-block;">
-                    ดูบน Google Maps
-                </a>
-                <button class="edit-pin-btn" data-id="${loc.id}" style="background-color: #ffc107; color: white; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; margin-left: 5px;">
-                    Edit
-                </button>
-                <button class="delete-btn" data-id="${loc.id}" style="background-color: #ef4444; color: white; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; margin-left: 5px;">
-                    X
-                </button>
+            <div style="margin-top:8px;display:flex;gap:4px;">
+              <a href="${googleMapsUrl}" target="_blank"
+                 style="background-color:#4285F4;color:#fff;padding:4px 8px;border-radius:4px;text-decoration:none;font-size:0.875rem;">
+                ดูบน Google Maps
+              </a>
+              <button class="edit-pin-btn" data-id="${loc.id}"
+                      style="background-color:#FFC107;color:#fff;padding:4px 8px;border:none;border-radius:4px;cursor:pointer;font-size:0.875rem;">
+                Edit
+              </button>
+              <button class="delete-btn" data-id="${loc.id}"
+                      style="background-color:#EF4444;color:#fff;padding:4px 8px;border:none;border-radius:4px;cursor:pointer;font-size:0.875rem;">
+                X
+              </button>
             </div>
           `);
-          // Store marker reference in map for easy access
-          permanentMarkersMap[loc.id] = marker;
+        permanentMarkersMap[loc.id] = marker;
 
-          // Attach click listener for buttons inside popup
-          marker.on('popupopen', function() {
-              const popupContent = marker.getPopup().getContent();
-              const tempDiv = document.createElement('div');
-              tempDiv.innerHTML = popupContent; // Parse HTML string to DOM
-              
-              // Event listener for Delete button in popup
-              const deleteButton = tempDiv.querySelector('.delete-btn');
-              if (deleteButton) {
-                  deleteButton.onclick = (e) => {
-                      e.stopPropagation(); 
-                      deleteLocation(parseInt(deleteButton.dataset.id)); // Call deleteLocation with ID
-                      map.closePopup(); 
-                  };
-              }
+        marker.on('popupopen', () => {
+          const popupContent = marker.getPopup().getContent();
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = popupContent;
 
-              // Event listener for Edit button in popup
-              const editButton = tempDiv.querySelector('.edit-pin-btn');
-              if (editButton) {
-                  editButton.onclick = (e) => {
-                      e.stopPropagation();
-                      map.closePopup(); // Close the popup
-                      editLocation(parseInt(editButton.dataset.id)); // Call editLocation
-                  };
-              }
-              // Replace content of popup with the DOM element to attach events
-              marker.getPopup().setContent(tempDiv);
-          });
+          const deleteBtn = tempDiv.querySelector('.delete-btn');
+          if (deleteBtn) {
+            deleteBtn.onclick = (e) => {
+              e.stopPropagation();
+              deleteLocation(parseInt(deleteBtn.dataset.id));
+              map.closePopup();
+            };
+          }
+          const editBtn = tempDiv.querySelector('.edit-pin-btn');
+          if (editBtn) {
+            editBtn.onclick = (e) => {
+              e.stopPropagation();
+              map.closePopup();
+              editLocation(parseInt(editBtn.dataset.id));
+            };
+          }
+          marker.getPopup().setContent(tempDiv);
+        });
       });
-      permanentMarkers.addTo(map); 
+
+      permanentMarkers.addTo(map);
     }
 
+    /* ---- Render Saved Locations Table ---- */
     function renderTable() {
-      savedLocationsTableBody.innerHTML = ''; 
-
+      savedLocationsTableBody.innerHTML = '';
       if (savedLocations.length === 0) {
-        const noDataRow = document.createElement('tr');
-        noDataRow.innerHTML = '<td colspan="7" class="py-4 px-4 text-gray-500 text-center">ยังไม่มีตำแหน่งที่บันทึกไว้</td>';
-        savedLocationsTableBody.appendChild(noDataRow);
+        const noRow = document.createElement('tr');
+        noRow.innerHTML = `
+          <td colspan="7" class="py-4 px-4 text-gray-500 text-center">ยังไม่มีตำแหน่งที่บันทึกไว้</td>
+        `;
+        savedLocationsTableBody.appendChild(noRow);
         return;
       }
 
-      savedLocations.forEach((loc, index) => {
+      savedLocations.forEach((loc) => {
         const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`;
         const row = document.createElement('tr');
-        row.classList.add('border-b', 'border-gray-200', 'last:border-b-0');
         row.innerHTML = `
-          <td class="py-3 px-4 text-sm text-gray-800">${loc.id}</td>
-          <td class="py-3 px-4 text-sm text-gray-800">${loc.name || '-'}</td>
-          <td class="py-3 px-4 text-sm text-gray-800">${loc.lat.toFixed(6)}</td>
-          <td class="py-3 px-4 text-sm text-gray-800">${loc.lng.toFixed(6)}</td>
-          <td class="py-3 px-4 text-sm text-gray-800">${loc.timestamp}</td>
-          <td class="py-3 px-4 text-sm text-gray-800">
-            <a href="${googleMapsUrl}" target="_blank" class="text-blue-600 hover:underline">ดูบน Google Maps</a>
+          <td>${loc.id}</td>
+          <td>${loc.name}</td>
+          <td class="hidden-col">${loc.lat.toFixed(6)}</td>
+          <td class="hidden-col">${loc.lng.toFixed(6)}</td>
+          <td>${loc.timestamp}</td>
+          <td>
+            <a href="${googleMapsUrl}" target="_blank" class="text-blue-600 hover:underline text-sm">
+              ดูบน Google Maps
+            </a>
           </td>
-          <td class="py-3 px-4 text-sm text-gray-800">
-            <button onclick="editLocation(${loc.id})" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-md shadow-sm transition duration-300 ease-in-out transform hover:scale-105">
-                Edit
+          <td class="space-x-2">
+            <button onclick="editLocation(${loc.id})" class="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-md text-sm">
+              Edit
             </button>
-            <button onclick="deleteLocation(${loc.id})" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md shadow-sm transition duration-300 ease-in-out transform hover:scale-105 ml-2">
-                X
+            <button onclick="deleteLocation(${loc.id})" class="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-md text-sm">
+              X
             </button>
           </td>
         `;
@@ -525,84 +657,24 @@
       });
     }
 
-    // New function to handle editing a location
-    function editLocation(id) {
-        const loc = savedLocations.find(l => l.id === id);
-        if (!loc) return; // Exit if location not found
-
-        // If another item was being edited, implicitly save/cancel it first
-        if (editingId !== null && editingId !== id) {
-            cancelEditButton.click(); // Trigger cancel to clean up previous edit state
-        }
-        
-        editingId = id; // Set the global editingId
-
-        // Remove the permanent marker from the map for the item being edited
-        if (permanentMarkersMap[loc.id]) {
-            permanentMarkers.removeLayer(permanentMarkersMap[loc.id]);
-            delete permanentMarkersMap[loc.id];
-        }
-
-        // Create or update the editingMarker (yellow, draggable)
-        if (!editingMarker) {
-            editingMarker = L.marker([loc.lat, loc.lng], {icon: yellowIcon, draggable: true}).addTo(map);
-            editingMarker.on('drag', function(e) { // Use 'drag' for real-time updates
-                const pos = e.target.getLatLng();
-                currentLat = pos.lat;
-                currentLng = pos.lng;
-                document.getElementById('lat').textContent = currentLat.toFixed(6);
-                document.getElementById('lng').textContent = currentLng.toFixed(6);
-            });
-        } else {
-            editingMarker.setLatLng([loc.lat, loc.lng]);
-            editingMarker.options.draggable = true;
-            if (editingMarker._icon) {
-                 L.DomUtil.addClass(editingMarker._icon, 'leaflet-marker-draggable');
-            }
-            editingMarker.addTo(map); // Ensure it's on the map
-        }
-
-        map.setView([loc.lat, loc.lng], map.getZoom() || 14); // Zoom to the location
-
-        // Populate input fields with current values
-        employeeIdInput.value = loc.name;
-        document.getElementById('lat').textContent = loc.lat.toFixed(6);
-        document.getElementById('lng').textContent = loc.lng.toFixed(6);
-        currentLat = loc.lat; // Set global currentLat/Lng to initial edit values
-        currentLng = loc.lng;
-
-
-        // Show "Save Edit" and "Cancel" buttons, hide normal action buttons
-        editActionButtonsDiv.classList.remove('hidden');
-        normalActionButtonsDiv.classList.add('hidden'); // Hide normal buttons
-
-        showMessage(`กำลังแก้ไขตำแหน่ง ID: ${id}`, 'info');
-    }
-
+    /* ---- Save New Location (or Edit) ---- */
     function saveLocation() {
-      // Before saving, push current state to undoStack
       undoStack.push(JSON.stringify(savedLocations));
-
-      // If currently in edit mode, save the edit using confirmEditButton logic
       if (editingId !== null) {
-          confirmEditButton.click(); // Trigger the click of confirm edit button
-          return; // Exit saveLocation as edit is handled
-      } 
-      // Else, proceed with adding new location
-      
+        confirmEditButton.click();
+        return;
+      }
       if (currentLat === null || currentLng === null) {
         showMessage('กรุณาคลิกบนแผนที่หรือค้นหาสถานที่ก่อนบันทึก!', 'warning');
         return;
       }
-
-      let employeeId = employeeIdInput.value.trim();
-      if (employeeId === '') {
-        employeeId = `ID พนักงานที่ ${nextId}`;
+      let empId = employeeIdInput.value.trim();
+      if (empId === '') {
+        empId = `ID พนักงานที่ ${nextId}`;
       }
-
       const newLocation = {
         id: nextId,
-        name: employeeId,
+        name: empId,
         lat: currentLat,
         lng: currentLng,
         timestamp: new Date().toLocaleString('th-TH')
@@ -610,298 +682,329 @@
       savedLocations.push(newLocation);
       nextId++;
       showMessage('บันทึกตำแหน่งใหม่เรียบร้อย!', 'success');
-      
       localStorage.setItem('allSavedLocations', JSON.stringify(savedLocations));
       localStorage.setItem('nextId', nextId.toString());
-      
-      employeeIdInput.value = ''; // Clear input field
-      hideCurrentMarker(); // Hide red marker
-      renderPermanentMarkers(); // Re-render all blue markers
-      renderTable(); // Re-render table
-    }
 
-    function loadLocations() {
-      const storedLocations = localStorage.getItem('allSavedLocations');
-      const storedNextId = localStorage.getItem('nextId');
-
-      if (storedLocations) {
-        savedLocations = JSON.parse(storedLocations);
-        let maxId = 0;
-        savedLocations.forEach(loc => {
-          if (loc.id && typeof loc.id === 'number' && loc.id > maxId) {
-            maxId = loc.id;
-          }
-          if (!loc.name || loc.name.startsWith('ตำแหน่งที่ ')) {
-            loc.name = `ID พนักงานที่ ${loc.id || savedLocations.indexOf(loc) + 1}`;
-          }
-        });
-        nextId = maxId + 1;
-        showMessage('โหลดตำแหน่งที่บันทึกไว้แล้ว!', 'info');
-      } else {
-        savedLocations = [];
-        showMessage('ไม่พบตำแหน่งที่บันทึกไว้', 'info');
-      }
-      
-      if (storedNextId) {
-        nextId = parseInt(storedNextId);
-      } else if (savedLocations.length > 0) {
-        const maxId = savedLocations.reduce((max, loc) => Math.max(max, loc.id || 0), 0);
-        nextId = maxId + 1;
-      } else {
-        nextId = 1;
-      }
-
+      employeeIdInput.value = '';
+      hideCurrentMarker();
       renderPermanentMarkers();
       renderTable();
     }
 
-    function deleteLocation(id) { // Now accepts ID instead of index
-      // Before deleting, push current state to undoStack
-      undoStack.push(JSON.stringify(savedLocations));
+    /* ---- Load from localStorage ---- */
+    function loadLocations() {
+      const stored = localStorage.getItem('allSavedLocations');
+      const storedNext = localStorage.getItem('nextId');
+      if (stored) {
+        savedLocations = JSON.parse(stored);
+        let maxId = 0;
+        savedLocations.forEach((loc) => {
+          if (loc.id && loc.id > maxId) maxId = loc.id;
+        });
+        nextId = storedNext ? parseInt(storedNext) : maxId + 1;
+        showMessage('โหลดตำแหน่งที่บันทึกไว้แล้ว!', 'info');
+      } else {
+        savedLocations = [];
+        showMessage('ไม่พบตำแหน่งที่บันทึกไว้', 'info');
+        nextId = 1;
+      }
+      renderPermanentMarkers();
+      renderTable();
+    }
 
-      const index = savedLocations.findIndex(loc => loc.id === id);
-      if (index === -1) {
+    /* ---- Delete Single Location (confirm) ---- */
+    function deleteLocation(id) {
+      undoStack.push(JSON.stringify(savedLocations));
+      const idx = savedLocations.findIndex((l) => l.id === id);
+      if (idx === -1) {
         showMessage('ไม่พบรายการที่จะลบ', 'error');
         return;
       }
-
-      // Store the intention and index for the confirmation
       actionType = 'deleteSingle';
-      pendingDeleteIndex = index; // Store the actual index
-
-      // Update modal content for single delete
+      pendingDeleteIndex = idx;
+      const locToDelete = savedLocations[idx];
       modalTitle.textContent = 'ยืนยันการลบตำแหน่ง';
-      const locToDelete = savedLocations[index];
-      modalMessage.innerHTML = `คุณแน่ใจหรือไม่ว่าต้องการลบตำแหน่ง <b>ID: ${locToDelete.id}</b> (พนักงาน: ${locToDelete.name})? การดำเนินการนี้ไม่สามารถย้อนกลับได้`;
+      modalMessage.innerHTML = `คุณแน่ใจหรือไม่ว่าต้องการลบตำแหน่ง <b>ID: ${locToDelete.id}</b> (พนักงาน: ${locToDelete.name})?<br>การดำเนินการนี้ไม่สามารถย้อนกลับได้`;
       confirmClearButton.textContent = 'ยืนยันการลบ';
-
-      showClearConfirmation();
+      showConfirmation();
     }
 
+    /* ---- Request Clear All (confirm) ---- */
+    function requestClearAll() {
+      actionType = 'clearAll';
+      modalTitle.textContent = 'ยืนยันการลบข้อมูลทั้งหมด';
+      modalMessage.innerHTML = 'คุณแน่ใจหรือไม่ว่าต้องการลบตำแหน่งที่บันทึกไว้ทั้งหมด?<br>การดำเนินการนี้ไม่สามารถย้อนกลับได้';
+      confirmClearButton.textContent = 'ยืนยันการล้างทั้งหมด';
+      showConfirmation();
+    }
+    function performClearAll() {
+      undoStack.push(JSON.stringify(savedLocations));
+      localStorage.removeItem('allSavedLocations');
+      localStorage.removeItem('nextId');
+      savedLocations = [];
+      nextId = 1;
+      hideCurrentMarker();
+      if (editingMarker) map.removeLayer(editingMarker);
+      editingMarker = null;
+      editingId = null;
+      employeeIdInput.value = '';
+      locationSearchInput.value = '';
+      hideAutocomplete();
+      map.setView([13.7563, 100.5018], 6);
+      showMessage('ตำแหน่งที่บันทึกไว้ทั้งหมดถูกลบแล้ว!', 'success');
+      renderPermanentMarkers();
+      renderTable();
+      hideConfirmation();
+      document.getElementById('editActionButtons').classList.add('hidden');
+      normalActionButtonsDiv.classList.remove('hidden');
+    }
+
+    /* ---- Export to CSV ---- */
     function csvEscape(value) {
-      if (value === null || value === undefined) {
-        return '';
+      if (value == null) return '';
+      let str = String(value);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
       }
-      let stringValue = String(value);
-      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-        return `"${stringValue.replace(/"/g, '""')}"`;
-      }
-      return stringValue;
+      return str;
     }
-
     function exportToCSV() {
       if (savedLocations.length === 0) {
         showMessage('ไม่มีข้อมูลที่จะ Export!', 'warning');
         return;
       }
-
       let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-      csvContent += "ID,ID พนักงาน,Latitude,Longitude,เวลาที่บันทึก,ลิงก์ Google Maps\n";
-
-      savedLocations.forEach(function(loc) {
-        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`;
-        
-        let row = [
+      csvContent += "ID,ID พนักงาน,Latitude,Longitude,Timestamp,Google Maps\n";
+      savedLocations.forEach((loc) => {
+        const gmaps = `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`;
+        const row = [
           csvEscape(loc.id),
           csvEscape(loc.name),
           csvEscape(loc.lat.toFixed(6)),
           csvEscape(loc.lng.toFixed(6)),
           csvEscape(loc.timestamp),
-          csvEscape(googleMapsUrl)
+          csvEscape(gmaps)
         ].join(',');
-
         csvContent += row + "\n";
       });
-
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
       link.setAttribute("download", "saved_employee_locations.csv");
       document.body.appendChild(link);
-
       link.click();
       document.body.removeChild(link);
-
       showMessage('Export ข้อมูลเป็น CSV เรียบร้อยแล้ว!', 'success');
     }
 
+    /* ---- Get Current Location ---- */
     function getCurrentLocation() {
-      // Implicitly cancel any ongoing edit before getting new location
-      if (editingId !== null) {
-          cancelEditButton.click(); 
-      }
-
+      if (editingId !== null) cancelEditButton.click();
       if (navigator.geolocation) {
         showMessage('กำลังค้นหาตำแหน่งปัจจุบัน...', 'info');
-        searchResultsContainer.innerHTML = '';
-        searchResultsContainer.classList.add('hidden');
-        
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const lat = parseFloat(position.coords.latitude);
             const lng = parseFloat(position.coords.longitude);
-            updateCurrentMarker(lat, lng, false); // Not draggable by default for new selections
+            updateCurrentMarker(lat, lng, false);
             map.setView([lat, lng], 15);
             showMessage('พบตำแหน่งปัจจุบันแล้ว!', 'success');
           },
           (error) => {
-            let errorMessage = '';
+            let errMsg = '';
             switch (error.code) {
               case error.PERMISSION_DENIED:
-                errorMessage = 'ไม่อนุญาตให้เข้าถึงตำแหน่ง';
+                errMsg = 'ไม่อนุญาตให้เข้าถึงตำแหน่ง';
                 break;
               case error.POSITION_UNAVAILABLE:
-                errorMessage = 'ไม่สามารถระบุตำแหน่งได้';
+                errMsg = 'ไม่สามารถระบุตำแหน่งได้';
                 break;
               case error.TIMEOUT:
-                errorMessage = 'หมดเวลาในการค้นหาตำแหน่ง';
+                errMsg = 'หมดเวลาในการค้นหาตำแหน่ง';
                 break;
               default:
-                errorMessage = `เกิดข้อผิดพลาด: ${error.message}`;
-                break;
+                errMsg = `เกิดข้อผิดพลาด: ${error.message}`;
             }
-            showMessage(`ไม่สามารถระบุตำแหน่งปัจจุบันได้: ${errorMessage}`, 'error');
+            showMessage(`ไม่สามารถระบุตำแหน่งปัจจุบันได้: ${errMsg}`, 'error');
           },
-          {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
-          }
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
       } else {
         showMessage('เบราว์เซอร์ของคุณไม่รองรับ Geolocation.', 'error');
       }
     }
 
-    async function searchLocation(query) {
-      if (!query) {
-        searchResultsContainer.innerHTML = '';
-        searchResultsContainer.classList.add('hidden');
+    /* ---- Autocomplete Helpers ---- */
+    let autocompleteTimeout = null;
+    function showAutocomplete(items) {
+      autocompleteList.innerHTML = '';
+      if (!Array.isArray(items) || items.length === 0) {
+        hideAutocomplete();
         return;
       }
-
-      // Implicitly cancel any ongoing edit before new search
-      if (editingId !== null) {
-          cancelEditButton.click(); 
-      }
-
-      searchResultsContainer.innerHTML = '';
-      searchResultsContainer.classList.add('hidden');
-      
-      try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`); 
-        const data = await response.json();
-
-        if (data && data.length > 0) {
-          data.forEach(result => {
-            const resultItem = document.createElement('div');
-            resultItem.classList.add('p-2', 'cursor-pointer', 'hover:bg-gray-100', 'border-b', 'border-gray-200', 'last:border-b-0', 'text-gray-800');
-            resultItem.textContent = result.display_name;
-            resultItem.dataset.lat = result.lat;
-            resultItem.dataset.lng = result.lon;
-
-            resultItem.addEventListener('click', () => {
-              const selectedLat = parseFloat(resultItem.dataset.lat);
-              const selectedLng = parseFloat(resultItem.dataset.lng);
-              updateCurrentMarker(selectedLat, selectedLng, false); // Update and show red marker (non-draggable)
-              map.setView([selectedLat, selectedLng], 13);
-              showMessage(`เลือกสถานที่: ${result.display_name}`, 'success');
-              searchResultsContainer.classList.add('hidden');
-              locationSearchInput.value = result.display_name;
-            });
-            searchResultsContainer.appendChild(resultItem);
-          });
-          searchResultsContainer.classList.remove('hidden');
-        } else {
-          // No direct message for "not found" to avoid spamming for autocomplete
-        }
-      } catch (error) {
-        console.error('Error searching location:', error);
-      }
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.classList.add('autocomplete-item');
+        div.textContent = item.display_name;
+        div.dataset.lat = item.lat;
+        div.dataset.lon = item.lon;
+        div.addEventListener('click', () => {
+          const lat = parseFloat(div.dataset.lat);
+          const lon = parseFloat(div.dataset.lon);
+          updateCurrentMarker(lat, lon, false);
+          map.setView([lat, lon], 13);
+          showMessage(`เลือกสถานที่: ${item.display_name}`, 'success');
+          locationSearchInput.value = item.display_name;
+          hideAutocomplete();
+        });
+        autocompleteList.appendChild(div);
+      });
+      autocompleteList.classList.remove('hidden');
+    }
+    function hideAutocomplete() {
+      autocompleteList.classList.add('hidden');
+      autocompleteList.innerHTML = '';
     }
 
-    // --- New Edit Action Button Event Listeners ---
-    confirmEditButton.addEventListener('click', function() {
-        // Before confirming edit, push current state to undoStack
-        undoStack.push(JSON.stringify(savedLocations));
+    /* ---- Search Location via Nominatim for Autocomplete ---- */
+    function fetchAutocomplete(query) {
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+        .then(res => res.json())
+        .then(data => {
+          showAutocomplete(data);
+        })
+        .catch(err => {
+          console.error('Error fetching autocomplete:', err);
+        });
+    }
 
-        if (editingId === null || currentLat === null || currentLng === null) {
-            showMessage('ไม่มีการแก้ไขที่กำลังดำเนินการ หรือข้อมูลไม่สมบูรณ์', 'warning');
-            return;
-        }
+    /* ---- Search Location on Button/Enter ---- */
+    function searchLocation(query) {
+      if (!query.trim()) return;
+      if (editingId !== null) cancelEditButton.click();
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data) && data.length > 0) {
+            const lat = parseFloat(data[0].lat);
+            const lon = parseFloat(data[0].lon);
+            updateCurrentMarker(lat, lon, false);
+            map.setView([lat, lon], 13);
+            showMessage(`เลือกสถานที่: ${data[0].display_name}`, 'success');
+            locationSearchInput.value = data[0].display_name;
+          } else {
+            showMessage('ไม่พบตำแหน่งที่ค้นหา', 'warning');
+          }
+        })
+        .catch(err => {
+          console.error('Error searching location:', err);
+          showMessage('เกิดข้อผิดพลาดในการค้นหา', 'error');
+        });
+    }
 
-        const locIndex = savedLocations.findIndex(l => l.id === editingId);
-        if (locIndex === -1) {
-            showMessage('ไม่พบตำแหน่งที่จะอัปเดต', 'error');
-            cancelEditButton.click(); // Clean up state
-            return;
-        }
+    /* ---- Edit Location ---- */
+    function editLocation(id) {
+      const loc = savedLocations.find((l) => l.id === id);
+      if (!loc) return;
+      if (editingId !== null && editingId !== id) cancelEditButton.click();
 
-        const loc = savedLocations[locIndex];
-        const newEmployeeId = employeeIdInput.value.trim();
-        const newLat = currentLat;
-        const newLng = currentLng;
+      editingId = id;
+      if (permanentMarkersMap[loc.id]) {
+        permanentMarkers.removeLayer(permanentMarkersMap[loc.id]);
+        delete permanentMarkersMap[loc.id];
+      }
 
-        // Validation before saving
-        if (newEmployeeId === '') {
-            showMessage('ID พนักงานไม่สามารถเว้นว่างได้', 'error');
-            return; // Prevent saving
-        }
-        if (isNaN(newLat) || newLat < -90 || newLat > 90 || isNaN(newLng) || newLng < -180 || newLng > 180) {
-             showMessage('ค่าละติจูดและลองจิจูดไม่ถูกต้อง กรุณาแก้ไขให้ถูกต้อง', 'error');
-             return; 
-        }
+      if (!editingMarker) {
+        editingMarker = L.marker([loc.lat, loc.lng], { icon: yellowIcon, draggable: true }).addTo(map);
+        editingMarker.on('drag', (e) => {
+          const pos = e.target.getLatLng();
+          currentLat = pos.lat; currentLng = pos.lng;
+          document.getElementById('lat').textContent = currentLat.toFixed(6);
+          document.getElementById('lng').textContent = currentLng.toFixed(6);
+        });
+      } else {
+        editingMarker.setLatLng([loc.lat, loc.lng]);
+        editingMarker.options.draggable = true;
+        if (editingMarker._icon) L.DomUtil.addClass(editingMarker._icon, 'leaflet-marker-draggable');
+        editingMarker.addTo(map);
+      }
 
-        loc.lat = newLat;
-        loc.lng = newLng;
-        loc.name = newEmployeeId;
-        loc.timestamp = new Date().toLocaleString('th-TH'); // Update timestamp on edit
-        localStorage.setItem('allSavedLocations', JSON.stringify(savedLocations));
-        showMessage('อัปเดตตำแหน่งแล้ว!', 'success');
+      map.setView([loc.lat, loc.lng], map.getZoom() || 14);
+      employeeIdInput.value = loc.name;
+      document.getElementById('lat').textContent = loc.lat.toFixed(6);
+      document.getElementById('lng').textContent = loc.lng.toFixed(6);
+      currentLat = loc.lat; currentLng = loc.lng;
 
-        // Clean up editing state
-        editingId = null;
-        if (editingMarker) map.removeLayer(editingMarker);
-        editingMarker = null;
-        currentLat = null;
-        currentLng = null;
-        document.getElementById('lat').textContent = '--';
-        document.getElementById('lng').textContent = '--';
-        employeeIdInput.value = '';
-        editActionButtonsDiv.classList.add('hidden'); // Hide edit action buttons
-        normalActionButtonsDiv.classList.remove('hidden'); // Show normal action buttons
+      editActionButtonsDiv.classList.remove('hidden');
+      normalActionButtonsDiv.classList.add('hidden');
+      showMessage(`กำลังแก้ไขตำแหน่ง ID: ${id}`, 'info');
+    }
 
-        renderPermanentMarkers(); // Re-render all markers including the updated one
-        renderTable(); // Re-render table to show updated data
+    /* ---- Confirm Edit ---- */
+    confirmEditButton.addEventListener('click', () => {
+      undoStack.push(JSON.stringify(savedLocations));
+      if (editingId === null || currentLat === null || currentLng === null) {
+        showMessage('ไม่มีการแก้ไขที่กำลังดำเนินการ หรือข้อมูลไม่สมบูรณ์', 'warning');
+        return;
+      }
+      const idx = savedLocations.findIndex((l) => l.id === editingId);
+      if (idx === -1) {
+        showMessage('ไม่พบตำแหน่งที่จะอัปเดต', 'error');
+        cancelEditButton.click();
+        return;
+      }
+      const newEmpId = employeeIdInput.value.trim();
+      if (newEmpId === '') {
+        showMessage('ID พนักงานไม่สามารถเว้นว่างได้', 'error');
+        return;
+      }
+      if (isNaN(currentLat) || currentLat < -90 || currentLat > 90 || isNaN(currentLng) || currentLng < -180 || currentLng > 180) {
+        showMessage('ค่าละติจูดและลองจิจูดไม่ถูกต้อง กรุณาแก้ไขให้ถูกต้อง', 'error');
+        return;
+      }
+      savedLocations[idx].lat       = currentLat;
+      savedLocations[idx].lng       = currentLng;
+      savedLocations[idx].name      = newEmpId;
+      savedLocations[idx].timestamp = new Date().toLocaleString('th-TH');
+      localStorage.setItem('allSavedLocations', JSON.stringify(savedLocations));
+      showMessage('อัปเดตตำแหน่งแล้ว!', 'success');
+
+      editingId = null;
+      if (editingMarker) map.removeLayer(editingMarker);
+      editingMarker = null;
+      currentLat = null; currentLng = null;
+      document.getElementById('lat').textContent = '--';
+      document.getElementById('lng').textContent = '--';
+      employeeIdInput.value = '';
+      document.getElementById('editActionButtons').classList.add('hidden');
+      normalActionButtonsDiv.classList.remove('hidden');
+
+      renderPermanentMarkers();
+      renderTable();
     });
 
-    cancelEditButton.addEventListener('click', function() {
-        if (editingMarker) map.removeLayer(editingMarker); // Remove yellow marker
-        editingMarker = null;
-        editingId = null; // Clear editing state
-        currentLat = null; // Clear current lat/lng
-        currentLng = null;
-        document.getElementById('lat').textContent = '--';
-        document.getElementById('lng').textContent = '--';
-        employeeIdInput.value = ''; // Clear employee ID input
-        editActionButtonsDiv.classList.add('hidden'); // Hide edit action buttons
-        normalActionButtonsDiv.classList.remove('hidden'); // Show normal action buttons
-        showMessage('ยกเลิกการดำเนินการแล้ว', 'info');
-        renderPermanentMarkers(); // Re-render permanent markers to show original blue one
+    /* ---- Cancel Edit ---- */
+    cancelEditButton.addEventListener('click', () => {
+      if (editingMarker) map.removeLayer(editingMarker);
+      editingMarker = null;
+      editingId = null;
+      currentLat = null; currentLng = null;
+      document.getElementById('lat').textContent = '--';
+      document.getElementById('lng').textContent = '--';
+      employeeIdInput.value = '';
+      document.getElementById('editActionButtons').classList.add('hidden');
+      normalActionButtonsDiv.classList.remove('hidden');
+      showMessage('ยกเลิกการดำเนินการแล้ว', 'info');
+      renderPermanentMarkers();
     });
 
-    // --- Undo Function ---
+    /* ---- Undo Last Action ---- */
     function undoLastAction() {
       if (undoStack.length === 0) {
         showMessage('ไม่พบการเปลี่ยนแปลงก่อนหน้า', 'warning');
         return;
       }
-      
-      // Before undoing, clean up any active editing state
-      if (editingId !== null) {
-          cancelEditButton.click(); 
-      }
-
+      if (editingId !== null) cancelEditButton.click();
       const lastState = undoStack.pop();
       if (lastState) {
         savedLocations = JSON.parse(lastState);
@@ -912,126 +1015,121 @@
       }
     }
 
-
-    // --- Initialization ---
+    /* ---- Initialize Map + Events ---- */
     window.onload = function() {
       map = L.map('map').setView([13.7563, 100.5018], 6);
-
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19
       }).addTo(map);
+      permanentMarkers.addTo(map);
 
-      permanentMarkers.addTo(map); // Add the layer group to the map
-
-      // Updated map.on('click') logic
-      map.on('click', function(e) {
+      map.on('click', (e) => {
         const lat = parseFloat(e.latlng.lat);
         const lng = parseFloat(e.latlng.lng);
-
         if (editingId !== null) {
-          // If in edit mode, move the yellow editing marker to the new click location
           if (editingMarker) {
             editingMarker.setLatLng([lat, lng]);
           } else {
-            // This case should ideally not be hit if editLocation is called correctly,
-            // but as a fallback, create a draggable yellow marker if it doesn't exist
             editingMarker = L.marker([lat, lng], { icon: yellowIcon, draggable: true }).addTo(map);
-            editingMarker.on('drag', function(dragE) { // Add drag listener for newly created marker
-                const pos = dragE.target.getLatLng();
-                currentLat = pos.lat;
-                currentLng = pos.lng;
-                document.getElementById('lat').textContent = currentLat.toFixed(6);
-                document.getElementById('lng').textContent = currentLng.toFixed(6);
+            editingMarker.on('drag', (dragE) => {
+              const pos = dragE.target.getLatLng();
+              currentLat = pos.lat; currentLng = pos.lng;
+              document.getElementById('lat').textContent = currentLat.toFixed(6);
+              document.getElementById('lng').textContent = currentLng.toFixed(6);
             });
           }
-          currentLat = lat; // Update currentLat/Lng with new click position
-          currentLng = lng;
+          currentLat = lat; currentLng = lng;
           document.getElementById('lat').textContent = lat.toFixed(6);
           document.getElementById('lng').textContent = lng.toFixed(6);
         } else {
-          // Normal mode (not editing), update the red currentMarker
-          updateCurrentMarker(lat, lng, false); // New selections are not draggable
+          updateCurrentMarker(lat, lng, false);
         }
-
-        // Always hide search results when clicking on the map
-        searchResultsContainer.innerHTML = '';
-        searchResultsContainer.classList.add('hidden');
       });
 
-
-      let searchTimeout;
+      /*  Autocomplete on input */
       locationSearchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-          searchLocation(e.target.value);
-        }, 500); 
+        const query = e.target.value.trim();
+        if (query.length > 0) {
+          clearSearchIcon.style.display = 'block';
+          clearTimeout(autocompleteTimeout);
+          autocompleteTimeout = setTimeout(() => {
+            fetchAutocomplete(query);
+          }, 400);
+        } else {
+          clearSearchIcon.style.display = 'none';
+          hideAutocomplete();
+        }
       });
 
-      searchLocationButton.addEventListener('click', () => { // Corrected element reference
+      /* Clear icon click */
+      clearSearchIcon.addEventListener('click', () => {
+        locationSearchInput.value = '';
+        clearSearchIcon.style.display = 'none';
+        hideAutocomplete();
+        locationSearchInput.focus();
+      });
+
+      /* Hide autocomplete on click outside */
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.search-wrapper')) {
+          hideAutocomplete();
+        }
+      });
+
+      /* Enter key triggers search */
+      locationSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          hideAutocomplete();
+          searchLocation(locationSearchInput.value);
+        }
+      });
+      searchLocationButton.addEventListener('click', () => {
+        hideAutocomplete();
         searchLocation(locationSearchInput.value);
       });
-
-      document.getElementById('saveButton').addEventListener('click', saveLocation);
-      document.getElementById('clearAllButton').addEventListener('click', function() { // Modified clearAllButton click
-          actionType = 'clearAll';
-          modalTitle.textContent = 'ยืนยันการลบข้อมูลทั้งหมด';
-          modalMessage.innerHTML = 'คุณแน่ใจหรือไม่ว่าต้องการลบตำแหน่งที่บันทึกไว้ทั้งหมด? การดำเนินการนี้ไม่สามารถย้อนกลับได้';
-          confirmClearButton.textContent = 'ยืนยันการล้างทั้งหมด';
-          showClearConfirmation();
+      currentLocationButton.addEventListener('click', () => {
+        hideAutocomplete();
+        getCurrentLocation();
       });
-      document.getElementById('exportCsvButton').addEventListener('click', exportToCSV);
-      currentLocationButton.addEventListener('click', getCurrentLocation); // Corrected element reference
-      
-      // Global confirm/cancel for ALL modal actions
-      confirmClearButton.addEventListener('click', function() {
+
+      saveButton.addEventListener('click', saveLocation);
+      clearAllButton.addEventListener('click', requestClearAll);
+      exportCsvButton.addEventListener('click', exportToCSV);
+      backButton.addEventListener('click', undoLastAction);
+
+      confirmClearButton.addEventListener('click', () => {
         if (actionType === 'clearAll') {
-            performClearAllLocations();
+          performClearAll();
         } else if (actionType === 'deleteSingle') {
-            if (pendingDeleteIndex !== null && savedLocations[pendingDeleteIndex]) {
-                // Before single delete, push current state to undoStack
-                undoStack.push(JSON.stringify(savedLocations));
-
-                const deletedLoc = savedLocations.splice(pendingDeleteIndex, 1);
-                localStorage.setItem('allSavedLocations', JSON.stringify(savedLocations));
-                showMessage(`ลบตำแหน่ง (ID: ${deletedLoc[0].id}, ID พนักงาน: ${deletedLoc[0].name}) แล้ว!`, 'success');
-                renderPermanentMarkers();
-                renderTable();
-                // If the deleted item was the one being edited, clean up edit state
-                if (editingId === deletedLoc[0].id) { 
-                    cancelEditButton.click(); // Trigger cancel to clean up
-                }
-            }
+          if (pendingDeleteIndex !== null && savedLocations[pendingDeleteIndex]) {
+            undoStack.push(JSON.stringify(savedLocations));
+            const deleted = savedLocations.splice(pendingDeleteIndex, 1);
+            localStorage.setItem('allSavedLocations', JSON.stringify(savedLocations));
+            showMessage(`ลบตำแหน่ง (ID: ${deleted[0].id}, ID พนักงาน: ${deleted[0].name}) แล้ว!`, 'success');
+            renderPermanentMarkers();
+            renderTable();
+            if (editingId === deleted[0].id) cancelEditButton.click();
+          }
         }
-        actionType = null; // Reset action type
-        pendingDeleteIndex = null; // Clear pending index
-        hideClearConfirmation(); // Hide modal and reset its content
+        actionType = null;
+        pendingDeleteIndex = null;
+        hideConfirmation();
       });
-
-      cancelClearButton.addEventListener('click', function() {
-        actionType = null; // Reset action type
-        pendingDeleteIndex = null; // Clear pending index
-        hideClearConfirmation(); // Hide modal and reset its content
+      cancelClearButton.addEventListener('click', () => {
+        actionType = null;
+        pendingDeleteIndex = null;
+        hideConfirmation();
         showMessage('ยกเลิกการดำเนินการแล้ว', 'info');
       });
 
-      undoButton.addEventListener('click', undoLastAction); // Attach undo button listener
-
-
-      backButton.addEventListener('click', () => {
-        window.history.back();
-      });
-
       loadLocations();
-
       map.invalidateSize();
     };
 
-    // Adjust map size on window resize to ensure responsiveness
-    window.addEventListener('resize', function() {
-      if (map) {
-        map.invalidateSize();
-      }
+    window.addEventListener('resize', () => {
+      if (map) map.invalidateSize();
     });
   </script>
 </body>

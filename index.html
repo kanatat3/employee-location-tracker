@@ -32,8 +32,7 @@
     #map {
       height: 400px;
       width: 100%;
-      /* Removed sticky, top, z-index as it's now handled by #stickyHeader */
-      /* Removed flex-shrink: 0 as it's not directly a flex item in the new sticky context */
+      /* No sticky position or related z-index here */
     }
     /* Styles for the confirmation modal */
     .modal-overlay {
@@ -58,102 +57,104 @@
     td {
       padding: 0.25rem 0.5rem;
     }
-    /* Sticky header for map and controls */
-    #stickyHeader {
-      position: sticky;
-      top: 0;
-      z-index: 999; /* Higher z-index to stay on top */
-      background-color: white;
-      padding: 16px 24px;
-      border-bottom: 1px solid #ddd;
-      /* Inherit main container's shadow/rounded corners if desired, or add here */
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* light shadow */
-      border-radius: 0.75rem; /* rounded-xl for consistency with main container */
-      margin: -24px -24px 24px -24px; /* Counter main container's padding */
-      width: calc(100% + 48px); /* Adjust width to fit parent with negative margins */
-    }
-    /* Adjust top-4 left-4 for back button relative to the outermost container */
+    /* No sticky header for map and controls */
+    /* Back button position adjusted relative to the main page container */
     #backButton {
-      top: 24px; /* Adjusted to match top padding of stickyHeader */
-      left: 24px; /* Adjusted to match left padding of stickyHeader */
-      z-index: 1000; /* Ensure back button is above stickyHeader */
+      position: absolute; /* Keep it absolute to the main container */
+      top: 24px; /* Adjusted to match top padding of the main container */
+      left: 24px; /* Adjusted to match left padding of the main container */
+      z-index: 100; /* Ensure back button is above other content */
+    }
+
+    /* Message box at the top of the screen */
+    #messageBox {
+      position: fixed; /* Make it float above content */
+      top: 0; /* Stick to the top */
+      left: 50%; /* Center horizontally */
+      transform: translateX(-50%); /* Adjust for true centering */
+      z-index: 1001; /* Ensure it's on top of everything */
+      width: auto; /* Adjust width based on content */
+      max-width: 90%; /* Max width to prevent overflow on small screens */
+      padding: 10px 20px; /* Added padding */
+      border-radius: 0 0 8px 8px; /* Rounded corners only at the bottom */
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Subtle shadow */
+      text-align: center;
+      font-size: 1rem;
+      font-weight: 500;
     }
   </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen bg-blue-50 p-4">
   <div class="relative flex flex-col items-center justify-center w-full max-w-4xl bg-white shadow-lg rounded-xl p-6 space-y-4 mb-8">
     
-    <!-- Sticky Header containing Map and Controls -->
-    <div id="stickyHeader">
-        <!-- Back Button Icon (position relative to the outer .relative container) -->
-        <button id="backButton" class="absolute bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-3 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75" title="ย้อนกลับ">
-          <i class="fas fa-arrow-left"></i>
-        </button>
+    <!-- Back Button Icon (position relative to the outermost .relative container) -->
+    <button id="backButton" class="absolute bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-3 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75" title="Back">
+      <i class="fas fa-arrow-left"></i>
+    </button>
 
-        <h3 class="text-2xl font-semibold text-gray-800 mb-4 text-center">คลิกบนแผนที่เพื่อระบุละติจูดและลองจิจูด</h3>
-        <!-- Map container -->
-        <div id="map" class="rounded-lg border border-gray-300 overflow-hidden"></div>
+    <h3 class="text-2xl font-semibold text-gray-800 mb-4 text-center">คลิกบนแผนที่เพื่อระบุละติจูดและลองจิจูด</h3>
+    <!-- Map container -->
+    <div id="map" class="rounded-lg border border-gray-300 overflow-hidden"></div>
+    
+    <!-- Latitude and Longitude display (moved here, outside topControlSection) -->
+    <div class="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-8 mt-4 text-xs font-medium text-gray-700 w-full flex-wrap">
+      <p>Latitude: <span id="lat" class="font-bold text-blue-600">--</span></p>
+      <p>Longitude: <span id="lng" class="font-bold text-blue-600">--</span></p>
+    </div>
+
+    <!-- Panel Controls (now a regular div, not sticky) -->
+    <div id="topControlSection" class="w-full max-h-[300px] overflow-y-auto px-4 py-3 bg-white border border-gray-200 rounded-md shadow-sm">
         
-        <!-- Panel Controls -->
-        <div id="topControlSection" class="w-full max-h-[300px] overflow-y-auto pt-4"> <!-- Added pt-4 for spacing -->
-            <!-- Search Input for Location Name -->
-            <div class="w-full flex flex-col sm:flex-row items-center sm:space-x-4 mt-4">
-              <label for="locationSearchInput" class="text-gray-700 text-lg font-medium sm:w-1/4">ค้นหาสถานที่:</label>
-              <input type="text" id="locationSearchInput" placeholder="เช่น กรุงเทพมหานคร, สุวรรณภูมิ" 
-                    class="mt-1 sm:mt-0 flex-grow p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800">
-              <button id="searchLocationButton" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 mt-2 sm:mt-0">
-                ค้นหาสถานที่
-              </button>
-            </div>
-            <!-- New div for search results -->
-            <div id="searchResultsContainer" class="w-full mt-2 hidden bg-white border border-gray-300 rounded-md shadow-md max-h-60 overflow-y-auto">
-              <!-- Search results will be appended here -->
-            </div>
+        <!-- Employee ID Input (moved to top of panel controls) -->
+        <div class="w-full flex flex-col sm:flex-row items-center sm:space-x-4 mt-2">
+          <label for="employeeIdInput" class="text-gray-700 text-lg font-medium sm:w-1/4">ID พนักงาน:</label>
+          <input type="text" id="employeeIdInput" placeholder="เช่น 824001, 824002, 824003" 
+             class="mt-1 sm:mt-0 flex-grow p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800">
+        </div>
 
-            <!-- Latitude and Longitude display for current click -->
-            <div class="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-8 mt-4 text-lg font-medium text-gray-700 w-full flex-wrap">
-              <p>ละติจูดที่เลือก: <span id="lat" class="font-bold text-blue-600">--</span></p>
-              <p>ลองจิจูดที่เลือก: <span id="lng" class="font-bold text-blue-600">--</span></p>
-              <!-- Moved Current Location Button here -->
-              <button id="currentLocationButton" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
-                ไปยังตำแหน่งปัจจุบัน
-              </button>
-            </div>
+        <!-- Search Input for Location Name and Current Location Button -->
+        <div class="w-full flex flex-col sm:flex-row items-center sm:space-x-4 mt-4">
+          <label for="locationSearchInput" class="text-gray-700 text-lg font-medium sm:w-1/4">ค้นหาสถานที่:</label>
+          <input type="text" id="locationSearchInput" placeholder="เช่น กรุงเทพมหานคร, สุวรรณภูมิ" 
+                class="mt-1 sm:mt-0 flex-grow p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800">
+          <button id="searchLocationButton" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 mt-2 sm:mt-0">
+            ค้นหา
+          </button>
+          <button id="currentLocationButton" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 ml-2">
+            ตำแหน่งปัจจุบัน
+          </button>
+        </div>
+        <!-- New div for search results -->
+        <div id="searchResultsContainer" class="w-full mt-2 hidden bg-white border border-gray-300 rounded-md shadow-md max-h-60 overflow-y-auto">
+          <!-- Search results will be appended here -->
+        </div>
 
-            <!-- Input field for employee ID -->
-            <div class="w-full flex flex-col sm:flex-row items-center sm:space-x-4 mt-2">
-              <label for="employeeIdInput" class="text-gray-700 text-lg font-medium sm:w-1/4">ID พนักงาน:</label>
-              <input type="text" id="employeeIdInput" placeholder="เช่น 824001, 824002, 824003" 
-                     class="mt-1 sm:mt-0 flex-grow p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800">
-            </div>
+        <!-- Buttons for saving, clearing, and exporting locations -->
+        <div id="normalActionButtons" class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-4 w-full justify-center flex-wrap">
+          <button id="saveButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+            Save
+          </button>
+          <button id="clearAllButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+            Clear all
+          </button>
+          <button id="exportCsvButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+            Export
+          </button>
+          <button id="undoButton" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-6 rounded-lg shadow-md transition transform hover:scale-105">
+            Back
+          </button>
+        </div>
 
-            <!-- Buttons for saving, clearing, and exporting locations -->
-            <div id="normalActionButtons" class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-4 w-full justify-center flex-wrap">
-              <button id="saveButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
-                บันทึกตำแหน่งปัจจุบัน
-              </button>
-              <button id="clearAllButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
-                ล้างตำแหน่งที่บันทึกทั้งหมด
-              </button>
-              <button id="exportCsvButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
-                Export เป็น CSV
-              </button>
-              <button id="undoButton" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-6 rounded-lg shadow-md transition transform hover:scale-105">
-                ย้อนกลับ
-              </button>
-            </div>
-
-            <!-- New edit action buttons -->
-            <div id="editActionButtons" class="flex space-x-4 mt-4 hidden">
-              <button id="confirmEditButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition transform hover:scale-105">
-                บันทึกการแก้ไข
-              </button>
-              <button id="cancelEditButton" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg shadow-md transition transform hover:scale-105">
-                ยกเลิก
-              </button>
-            </div>
-        </div> <!-- End Panel Controls -->
-    </div> <!-- End Sticky Header -->
+        <!-- New edit action buttons -->
+        <div id="editActionButtons" class="flex space-x-4 mt-4 hidden">
+          <button id="confirmEditButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition transform hover:scale-105">
+            Save
+          </button>
+          <button id="cancelEditButton" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg shadow-md transition transform hover:scale-105">
+            Cancel
+          </button>
+        </div>
+    </div> <!-- End Panel Controls -->
 
     <!-- Message box for user feedback -->
     <div id="messageBox" class="mt-4 p-3 bg-blue-100 text-blue-800 rounded-lg hidden text-center w-full">
@@ -161,7 +162,7 @@
     </div>
 
     <!-- Saved Locations Table -->
-    <div class="w-full mt-8">
+    <div class="w-full mt-8"> 
       <h4 class="text-xl font-semibold text-gray-800 mb-4 text-center">ตำแหน่งที่บันทึกไว้</h4>
       <div class="overflow-auto max-h-[300px] border border-gray-300 rounded-lg shadow-sm">
         <table class="min-w-full bg-white">
@@ -397,10 +398,10 @@
                     ดูบน Google Maps
                 </a>
                 <button class="edit-pin-btn" data-id="${loc.id}" style="background-color: #ffc107; color: white; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; margin-left: 5px;">
-                    แก้ไข
+                    Edit
                 </button>
                 <button class="delete-btn" data-id="${loc.id}" style="background-color: #ef4444; color: white; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; margin-left: 5px;">
-                    ลบ
+                    X
                 </button>
             </div>
           `);
@@ -464,10 +465,10 @@
           </td>
           <td class="py-3 px-4 text-sm text-gray-800">
             <button onclick="editLocation(${loc.id})" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-md shadow-sm transition duration-300 ease-in-out transform hover:scale-105">
-                แก้ไข
+                Edit
             </button>
             <button onclick="deleteLocation(${loc.id})" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md shadow-sm transition duration-300 ease-in-out transform hover:scale-105 ml-2">
-                ลบ
+                X
             </button>
           </td>
         `;

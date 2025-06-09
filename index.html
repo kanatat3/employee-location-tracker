@@ -189,7 +189,7 @@
       border: 1px solid #E2E8F0; /* gray-200 */
       border-radius: 0.5rem;     /* rounded-lg */
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      padding: 0.5rem;          /* reduced padding */
+      padding: 0.5rem;           /* reduced padding */
       margin-top: 1rem;          /* mt-4 */
       display: flex;
       flex-wrap: wrap;
@@ -210,6 +210,15 @@
     .action-row button:hover {
       transform: scale(1.02);
     }
+
+    /* เพิ่มขนาดเฉพาะปุ่ม Save, Export, Back */
+    .action-row button.bg-save,
+    .action-row button.bg-export,
+    .action-row button.bg-back {
+      padding: 0.5rem 1rem;    /* ปรับเป็นเล็กน้อย แต่ใหญ่กว่า default */
+      font-size: 1rem;
+    }
+
     .bg-save {
       background-color: #38A169; /* green-500 */
       color: white;
